@@ -1,4 +1,4 @@
-import airport_generator
+from airport_generator import airport_generator
 import random
 
 def airport_one_param(num_halls, rnd_seed=0, rnd_values=False):
