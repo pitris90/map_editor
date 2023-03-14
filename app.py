@@ -38,7 +38,8 @@ app = DashProxy(
     transforms=[MultiplexerTransform()],
 )
 
-airport_template = html
+additional_attrs = "additional_attributes"
+
 graph_templates = html.Div(
     [
         dcc.Dropdown(
@@ -52,13 +53,138 @@ graph_templates = html.Div(
     id="modal_html_body",
 )
 
+test_elements2 = [
+    {
+        "data": {
+            "id": "center",
+            "label": "center",
+            "add_data": False
+        }
+    }
+]
+
+test_elements = [
+    {
+        "data": {
+            "target": False,
+            "memory": 4,
+            "id": "center",
+            "value": "center",
+            "label": "center",
+        }
+    },
+    {
+        "data": {
+            "target": False,
+            "memory": 4,
+            "id": "H_0_0",
+            "value": "H_0_0",
+            "label": "H_0_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_0_0_0",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_0_0_0",
+            "label": "G_0_0_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_0_0_1",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_0_0_1",
+            "label": "G_0_0_1",
+        }
+    },
+    {
+        "data": {
+            "target": False,
+            "memory": 4,
+            "id": "H_1_0",
+            "value": "H_1_0",
+            "label": "H_1_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_1_0_0",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_1_0_0",
+            "label": "G_1_0_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_1_0_1",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_1_0_1",
+            "label": "G_1_0_1",
+        }
+    },
+    {
+        "data": {
+            "target": False,
+            "memory": 4,
+            "id": "H_2_0",
+            "value": "H_2_0",
+            "label": "H_2_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_2_0_0",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_2_0_0",
+            "label": "G_2_0_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_2_0_1",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_2_0_1",
+            "label": "G_2_0_1",
+        }
+    },
+    {"data": {"len": 1, "source": "center", "target": "H_0_0"}},
+    {"data": {"len": 1, "source": "center", "target": "H_1_0"}},
+    {"data": {"len": 1, "source": "center", "target": "H_2_0"}},
+    {"data": {"len": 1, "source": "H_0_0", "target": "G_0_0_0"}},
+    {"data": {"len": 1, "source": "H_0_0", "target": "G_0_0_1"}},
+    {"data": {"len": 1, "source": "H_1_0", "target": "G_1_0_0"}},
+    {"data": {"len": 1, "source": "H_1_0", "target": "G_1_0_1"}},
+    {"data": {"len": 1, "source": "H_2_0", "target": "G_2_0_0"}},
+    {"data": {"len": 1, "source": "H_2_0", "target": "G_2_0_1"}},
+]
 
 app.layout = html.Div(
     [
         cyto.Cytoscape(
             id="graph-cytoscape",
-            elements=[],
+            elements=test_elements2,
             style={"width": "100%", "height": "600px"},
+            layout={"name": "circle"},
+            autoRefreshLayout=True,
         ),
         html.Button("New Graph", id="new-graph-button"),
         dcc.Upload(id="upload-graph", children=html.Button("Upload Graph")),
@@ -91,9 +217,12 @@ def handle_yaml_graph(networkx_data: Dict):
     loader_function = function_dict[networkx_data["loader"]]
     print(inspect.signature(loader_function).parameters)
     print(networkx_data["loader_params"])
-    graph = call_graph_function_with_params(loader_function, networkx_data["loader_params"])
+    graph = call_graph_function_with_params(
+        loader_function, networkx_data["loader_params"]
+    )
     return graph
-    
+
+
 def call_graph_function_with_params(func_reference, param_dict):
     params = inspect.signature(func_reference).parameters  # get function parameters
     kwargs = {}
@@ -108,7 +237,6 @@ def call_graph_function_with_params(func_reference, param_dict):
             # parameter is required but not present in dictionary
             raise ValueError(f"Missing required parameter '{name}'")
     return func_reference(**kwargs)  # call the function with the extracted arguments
-    
 
 
 @app.callback(
@@ -132,23 +260,103 @@ def save(_):
 
 
 @app.callback(
-    Output("output-data-upload", "children"),
-    Input("upload-graph", "contents"),
-    State("upload-graph", "filename"),
+    Output("graph-cytoscape", "elements"),
+    [Input("upload-graph", "contents"), State("upload-graph", "filename"), State("graph-cytoscape", "elements")],
+    prevent_initial_call=False
 )
-def update_output(contents, filename):
-    if contents is not None:
+def update_output(contents, filename, elements):
+    if contents is None:
+        return []
         # read the uploaded file and convert it to a NetworkX graph
-        content_type, content_string = contents.split(",")
-        decoded = base64.b64decode(content_string)
-        network_data = yaml.safe_load(decoded)
+    content_type, content_string = contents.split(",")
+    decoded = base64.b64decode(content_string)
+    network_data = yaml.safe_load(decoded)
+    graph = handle_yaml_graph(network_data)
+    cytoscape_graph = nx.cytoscape_data(graph)
+    # convert the NetworkX data to a Cytoscape-compatible JSON format
+    # cy_data = json_graph.cytoscape_data(nx.DiGraph(network_data))
+    data = []
+    # return the Cytoscape-compatible JSON data
+    for node in cytoscape_graph["elements"]["nodes"]:
+        node["data"]["label"] = node["data"].pop("name")
+        temp_dict = dict()
+        data_dict = dict()
+        data_dict["label"] = node["data"]["label"]
+        data_dict["id"] = node["data"]["id"]
+        temp_dict["data"] = data_dict
+        data.append(temp_dict)
+    for edge in cytoscape_graph["elements"]["edges"]:
+        temp_dict = dict()
+        data_dict = dict()
+        data_dict["source"] = edge["data"]["source"]
+        data_dict["target"] = edge["data"]["target"]
+        temp_dict["data"] = data_dict
+        data.append(temp_dict)
+    
+    elements = cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
+    xdelements = (
+        cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
+    )
+    test_data = convert_networkx_to_cytoscape(graph)
+    xdgraph = convert_cytoscape_to_networkx(test_data)
+    elements = data
+    return elements
 
-        graph = handle_yaml_graph(network_data)
-        # convert the NetworkX data to a Cytoscape-compatible JSON format
-        # cy_data = json_graph.cytoscape_data(nx.DiGraph(network_data))
 
-        # return the Cytoscape-compatible JSON data
-        return network_data
+def convert_networkx_to_cytoscape(graph):
+    cyto_nodes = []
+    for node in graph.nodes():
+        # Get the node attributes from the NetworkX graph
+        node_attrs = graph.nodes[node]
+
+        # Create a dictionary representing the Cytoscape node with the modified attributes
+        cyto_node = {"data": {"id": node, "label": str(node), additional_attrs: node_attrs}}
+
+        # Add the Cytoscape node to the list of nodes
+        cyto_nodes.append(cyto_node)
+    cyto_edges = []
+    for edge in graph.edges():
+        # Get the edge attributes from the NetworkX graph
+        edge_attrs = graph.edges[edge]
+    
+        # Create a dictionary representing the Cytoscape edge with the modified attributes
+        cyto_edge = {"data": {"source": edge[0], "target": edge[1], additional_attrs: edge_attrs}}
+    
+        # Add the Cytoscape edge to the list of edges
+        cyto_edges.append(cyto_edge)
+    return cyto_nodes + cyto_edges
+
+
+def convert_cytoscape_to_networkx(elements):
+    # Create an empty NetworkX graph
+    nx_graph = nx.Graph()
+
+    # Add nodes to the graph
+    for element in elements:
+        if "source" not in element["data"] and "target" not in element["data"]:
+            # This element is a node
+            node_id = element["data"]["id"]
+            node_attrs = {key: value for key, value in element["data"][additional_attrs].items()}
+            nx_graph.add_node(node_id, **node_attrs)
+        else:
+            # This element is an edge
+            source_id = element["data"]["source"]
+            target_id = element["data"]["target"]
+            edge_attrs = {key: value for key, value in element["data"][additional_attrs].items()}
+            nx_graph.add_edge(source_id, target_id, **edge_attrs)
+
+    return nx_graph
+
+
+@app.callback(
+    Output("output-data-upload", "children"),
+    [Input("new-graph-button", "n_clicks"), State("graph-cytoscape", "elements")],
+)
+def test_graph(n, elements):
+    if n:
+        print(elements)
+        return "Klik"
+    return "Neklik"
 
 
 if __name__ == "__main__":
