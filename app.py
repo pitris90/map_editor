@@ -53,15 +53,7 @@ graph_templates = html.Div(
     id="modal_html_body",
 )
 
-test_elements2 = [
-    {
-        "data": {
-            "id": "center",
-            "label": "center",
-            "add_data": False
-        }
-    }
-]
+test_elements2 = [{"data": {"id": "center", "label": "center", "add_data": False}}]
 
 test_elements = [
     {
@@ -211,7 +203,7 @@ def handle_yaml_graph(networkx_data: Dict):
     if networkx_data is None:
         print("Bad yaml file")
         return
-    if networkx_data.get("loader") == "hardcoded":
+    if networkx_data.get("loader") == "hardcodedxx":
         # different handling
         return networkx_data
     loader_function = function_dict[networkx_data["loader"]]
@@ -252,17 +244,22 @@ def toggle_modal(n1, n2, is_open):
 
 @app.callback(
     Output("save-graph", "data"),
-    Input("save-graph-image", "n_clicks"),
+    [Input("save-graph-image", "n_clicks"), State("graph-cytoscape", "elements")],
     prevent_initial_call=True,
 )
-def save(_):
-    return dcc.send_file("./hello.txt")
+def save(_, elements):
+    yaml_dict = convert_cytoscape_to_yaml_dict(elements)
+    return dcc.send_string(yaml.dump(yaml_dict), "graph.yml")
 
 
 @app.callback(
     Output("graph-cytoscape", "elements"),
-    [Input("upload-graph", "contents"), State("upload-graph", "filename"), State("graph-cytoscape", "elements")],
-    prevent_initial_call=False
+    [
+        Input("upload-graph", "contents"),
+        State("upload-graph", "filename"),
+        State("graph-cytoscape", "elements"),
+    ],
+    prevent_initial_call=False,
 )
 def update_output(contents, filename, elements):
     if contents is None:
@@ -277,40 +274,29 @@ def update_output(contents, filename, elements):
     # cy_data = json_graph.cytoscape_data(nx.DiGraph(network_data))
     data = []
     # return the Cytoscape-compatible JSON data
-    for node in cytoscape_graph["elements"]["nodes"]:
-        node["data"]["label"] = node["data"].pop("name")
-        temp_dict = dict()
-        data_dict = dict()
-        data_dict["label"] = node["data"]["label"]
-        data_dict["id"] = node["data"]["id"]
-        temp_dict["data"] = data_dict
-        data.append(temp_dict)
-    for edge in cytoscape_graph["elements"]["edges"]:
-        temp_dict = dict()
-        data_dict = dict()
-        data_dict["source"] = edge["data"]["source"]
-        data_dict["target"] = edge["data"]["target"]
-        temp_dict["data"] = data_dict
-        data.append(temp_dict)
-    
-    elements = cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
+
+    elements = (
+        cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
+    )
     xdelements = (
         cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
     )
     test_data = convert_networkx_to_cytoscape(graph)
     xdgraph = convert_cytoscape_to_networkx(test_data)
-    elements = data
+    elements = test_data
     return elements
 
 
-def convert_networkx_to_cytoscape(graph):
+def convert_networkx_to_cytoscape(graph: nx.Graph):
     cyto_nodes = []
     for node in graph.nodes():
         # Get the node attributes from the NetworkX graph
         node_attrs = graph.nodes[node]
 
         # Create a dictionary representing the Cytoscape node with the modified attributes
-        cyto_node = {"data": {"id": node, "label": str(node), additional_attrs: node_attrs}}
+        cyto_node = {
+            "data": {"id": node, "label": str(node), additional_attrs: node_attrs}
+        }
 
         # Add the Cytoscape node to the list of nodes
         cyto_nodes.append(cyto_node)
@@ -318,10 +304,12 @@ def convert_networkx_to_cytoscape(graph):
     for edge in graph.edges():
         # Get the edge attributes from the NetworkX graph
         edge_attrs = graph.edges[edge]
-    
+
         # Create a dictionary representing the Cytoscape edge with the modified attributes
-        cyto_edge = {"data": {"source": edge[0], "target": edge[1], additional_attrs: edge_attrs}}
-    
+        cyto_edge = {
+            "data": {"source": edge[0], "target": edge[1], additional_attrs: edge_attrs}
+        }
+
         # Add the Cytoscape edge to the list of edges
         cyto_edges.append(cyto_edge)
     return cyto_nodes + cyto_edges
@@ -333,28 +321,84 @@ def convert_cytoscape_to_networkx(elements):
 
     # Add nodes to the graph
     for element in elements:
-        if "source" not in element["data"] and "target" not in element["data"]:
+        if is_node(element):
             # This element is a node
             node_id = element["data"]["id"]
-            node_attrs = {key: value for key, value in element["data"][additional_attrs].items()}
+            node_attrs = {
+                key: value for key, value in element["data"][additional_attrs].items()
+            }
             nx_graph.add_node(node_id, **node_attrs)
         else:
             # This element is an edge
             source_id = element["data"]["source"]
             target_id = element["data"]["target"]
-            edge_attrs = {key: value for key, value in element["data"][additional_attrs].items()}
+            edge_attrs = {
+                key: value for key, value in element["data"][additional_attrs].items()
+            }
             nx_graph.add_edge(source_id, target_id, **edge_attrs)
 
     return nx_graph
 
 
+def convert_cytoscape_to_yaml_dict(elements):
+    # temporary - now only converting to non directed graph settings
+    nodes = {}
+    edges = []
+    for element in elements:
+        if is_node(element):
+            node_id = element["data"]["id"]
+            node_attrs = {
+                key: value for key, value in element["data"][additional_attrs].items()
+            }
+            nodes[str(node_id)] = node_attrs
+        else:
+            edges.append(convert_edge_to_yaml_dict(element))
+
+    yaml_dict = {
+        "graph_params": {
+            "loader": "hardcoded",
+            "loader_params": {
+                "settings": {"directed": False},
+                "targets": {},
+                "nodes": nodes,
+                "edges": edges,
+            },
+        }
+    }
+    return yaml_dict
+
+
+def is_node(element):
+    return "source" not in element["data"] and "target" not in element["data"]
+
+
+def convert_edge_to_yaml_dict(element):
+    result = {}
+    source_id = element["data"]["source"]
+    target_id = element["data"]["target"]
+    edge_attrs = {
+        key: value
+        for key, value in element["data"][additional_attrs].items()
+        if key != "nodes"
+    }
+    result["nodes"] = [source_id, target_id]
+    result.update(edge_attrs)
+    return result
+
+
 @app.callback(
     Output("output-data-upload", "children"),
-    [Input("new-graph-button", "n_clicks"), State("graph-cytoscape", "elements")],
+    [
+        Input("new-graph-button", "n_clicks"),
+        State("graph-cytoscape", "elements"),
+        State("graph-cytoscape", "tapNodeData"),
+    ],
 )
-def test_graph(n, elements):
+def test_graph(n, elements, node_data):
     if n:
         print(elements)
+        print("\n")
+        print(node_data)
         return "Klik"
     return "Neklik"
 
