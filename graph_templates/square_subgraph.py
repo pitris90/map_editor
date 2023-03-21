@@ -7,7 +7,7 @@ import random
 
 def square_subgraph(side_length, num_nodes, num_targets=None, node_att=None, node_seed=13, param_seed=13, taxicab=True,
                     blind=False):
-    """Generates random graphs based on grids.
+    """Random graph based on grid.
     The graph nodes are randomly chosen points of grid of size ‹side_length› ⨉ ‹side_length›.
     ‹num_nodes› nodes are chosen. The graph edges are computed in the taxicab distance metric by
     default. Euclidean metric is set by ‹taxicab=False›.

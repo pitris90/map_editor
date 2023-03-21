@@ -1,10 +1,20 @@
 import networkx as nx
 from networkx.readwrite import json_graph
 import dash_bootstrap_components as dbc
-from dash import dcc, html, Dash
-from dash.dependencies import Input, Output, State
+
+# from dash import dcc, html, Dash
+# from dash.dependencies import Input, Output, State
 import dash_cytoscape as cyto
-from dash_extensions.enrich import DashProxy, MultiplexerTransform
+import dash_daq as daq
+from dash_extensions.enrich import (
+    DashProxy,
+    MultiplexerTransform,
+    Output,
+    Input,
+    State,
+    html,
+    dcc,
+)
 import base64
 import yaml
 import json
@@ -12,7 +22,15 @@ import inspect
 import os
 import sys
 import importlib
-from typing import List, Dict
+import re
+from typing import List, Dict, Callable, Any, Union
+
+
+class DocError(ValueError):
+    """Raised when the __doc__ attribute of an object is badly written."""
+
+    pass
+
 
 original_path = sys.path
 
@@ -31,6 +49,41 @@ for filename in os.listdir(directory):
         function = getattr(module, module_name)
         function_dict[module_name] = function
 
+
+def dropdown_functions(
+    function_dict: Dict[str, Callable[[Any], Union[nx.Graph, nx.DiGraph]]]
+):
+    dropdown_options = []
+    for key, item in function_dict.items():
+        doc = inspect.getdoc(item)
+        if doc is None:
+            continue
+        match = re.search(r"(.+?)\n", doc)
+        if not match:
+            raise DocError(f"Invalid name of function {key} for UI")
+        name = first_line = match.group(1)
+        dropdown_options.append({"label": name, "value": key})
+    return dropdown_options
+
+
+# proxy_wrapper_map = {
+#     Output("graph-cytoscape", "elements"): lambda proxy: cyto.Cytoscape(
+#         id="graph-cytoscape",
+#         elements=proxy,
+#         style={"width": "100%", "height": "600px"},
+#         layout={"name": "circle"},
+#         autoRefreshLayout=True,
+#     ), Output("modal", "is_open"): lambda proxy: dbc.Modal(
+#             [
+#                 dbc.ModalHeader("Graph Templates"),
+#                 dbc.ModalBody(children=graph_templates),
+#                 dbc.ModalFooter(
+#                     dbc.Button("CLOSE BUTTON", id="close", className="ml-auto")
+#                 ),
+#             ],
+#             id="modal", is_open=proxy
+#         )
+# }
 # app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app = DashProxy(
     __name__,
@@ -39,135 +92,27 @@ app = DashProxy(
 )
 
 additional_attrs = "additional_attributes"
+input_stylesheet = {
+    "display": "flex",
+    "flex-direction": "column",
+    "align-items": "center",
+}
 
 graph_templates = html.Div(
     [
         dcc.Dropdown(
-            options=[
-                {"label": "Airport with One Parameter", "value": "airport_one_param"}
-            ],
+            options=dropdown_functions(function_dict),
             id="graph_layout_dropdown",
+            value=None,
         ),
-        html.Button("Generate Graph from Template", id="graph-generate-button"),
+        html.Div(id="input_fields", style=input_stylesheet),
     ],
     id="modal_html_body",
 )
 
-test_elements2 = [{"data": {"id": "center", "label": "center", "add_data": False}}]
+graphxdd = nx.Graph()
 
-test_elements = [
-    {
-        "data": {
-            "target": False,
-            "memory": 4,
-            "id": "center",
-            "value": "center",
-            "label": "center",
-        }
-    },
-    {
-        "data": {
-            "target": False,
-            "memory": 4,
-            "id": "H_0_0",
-            "value": "H_0_0",
-            "label": "H_0_0",
-        }
-    },
-    {
-        "data": {
-            "target": True,
-            "value": "G_0_0_0",
-            "attack_len": 1,
-            "blindness": 0,
-            "memory": 1,
-            "id": "G_0_0_0",
-            "label": "G_0_0_0",
-        }
-    },
-    {
-        "data": {
-            "target": True,
-            "value": "G_0_0_1",
-            "attack_len": 1,
-            "blindness": 0,
-            "memory": 1,
-            "id": "G_0_0_1",
-            "label": "G_0_0_1",
-        }
-    },
-    {
-        "data": {
-            "target": False,
-            "memory": 4,
-            "id": "H_1_0",
-            "value": "H_1_0",
-            "label": "H_1_0",
-        }
-    },
-    {
-        "data": {
-            "target": True,
-            "value": "G_1_0_0",
-            "attack_len": 1,
-            "blindness": 0,
-            "memory": 1,
-            "id": "G_1_0_0",
-            "label": "G_1_0_0",
-        }
-    },
-    {
-        "data": {
-            "target": True,
-            "value": "G_1_0_1",
-            "attack_len": 1,
-            "blindness": 0,
-            "memory": 1,
-            "id": "G_1_0_1",
-            "label": "G_1_0_1",
-        }
-    },
-    {
-        "data": {
-            "target": False,
-            "memory": 4,
-            "id": "H_2_0",
-            "value": "H_2_0",
-            "label": "H_2_0",
-        }
-    },
-    {
-        "data": {
-            "target": True,
-            "value": "G_2_0_0",
-            "attack_len": 1,
-            "blindness": 0,
-            "memory": 1,
-            "id": "G_2_0_0",
-            "label": "G_2_0_0",
-        }
-    },
-    {
-        "data": {
-            "target": True,
-            "value": "G_2_0_1",
-            "attack_len": 1,
-            "blindness": 0,
-            "memory": 1,
-            "id": "G_2_0_1",
-            "label": "G_2_0_1",
-        }
-    },
-    {"data": {"len": 1, "source": "center", "target": "H_0_0"}},
-    {"data": {"len": 1, "source": "center", "target": "H_1_0"}},
-    {"data": {"len": 1, "source": "center", "target": "H_2_0"}},
-    {"data": {"len": 1, "source": "H_0_0", "target": "G_0_0_0"}},
-    {"data": {"len": 1, "source": "H_0_0", "target": "G_0_0_1"}},
-    {"data": {"len": 1, "source": "H_1_0", "target": "G_1_0_0"}},
-    {"data": {"len": 1, "source": "H_1_0", "target": "G_1_0_1"}},
-    {"data": {"len": 1, "source": "H_2_0", "target": "G_2_0_0"}},
-    {"data": {"len": 1, "source": "H_2_0", "target": "G_2_0_1"}},
-]
+test_elements2 = [{"data": {"id": "center", "label": "center", "add_data": False}}]
 
 app.layout = html.Div(
     [
@@ -188,7 +133,11 @@ app.layout = html.Div(
                 dbc.ModalHeader("Graph Templates"),
                 dbc.ModalBody(children=graph_templates),
                 dbc.ModalFooter(
-                    dbc.Button("CLOSE BUTTON", id="close", className="ml-auto")
+                    dbc.Button(
+                        "Generate Graph from Template",
+                        id="graph_generate_button",
+                        className="ml-auto",
+                    )
                 ),
             ],
             id="modal",
@@ -215,6 +164,40 @@ def handle_yaml_graph(networkx_data: Dict):
     return graph
 
 
+def parse_function_parameter_doc(
+    parameter_name, parameter_type, parameter_desc, function
+):
+    params = inspect.signature(function).parameters
+    required = params[parameter_name].default is inspect.Parameter.empty
+    default = None
+    if not required:
+        default = params[parameter_name].default
+
+    if parameter_type == "int":
+        return dcc.Input(
+            id=parameter_name,
+            type="number",
+            min=0,
+            required=required,
+            value=default,
+            className="input",
+        )
+    elif parameter_type == "bool":
+        if default is None:
+            return daq.BooleanSwitch(id=parameter_name, on=False, className="input")
+        return daq.BooleanSwitch(id=parameter_name, on=default)
+    elif parameter_type == "dict":
+        return dcc.Input(
+            id=parameter_name,
+            type="text",
+            required=required,
+            value=default,
+            className="label",
+        )
+    else:
+        return html.Label("Unknown parameter type in __doc__")
+
+
 def call_graph_function_with_params(func_reference, param_dict):
     params = inspect.signature(func_reference).parameters  # get function parameters
     kwargs = {}
@@ -232,12 +215,65 @@ def call_graph_function_with_params(func_reference, param_dict):
 
 
 @app.callback(
+    Output("input_fields", "children"),
+    [Input("graph_layout_dropdown", "value")],
+    prevent_initial_call=True,
+)
+def create_input_fields(selected_option):
+    # using global variable
+    selected_function = function_dict[selected_option]
+    doc = inspect.getdoc(selected_function)
+    input_fields = []
+    pattern = r"\s*([\w\s]+\w)\s*-\s*(\w+)\s*\((\w+)\)\s*:\s*(.+)"
+    parameters = re.findall(pattern, doc, flags=re.MULTILINE)
+    for parameter in parameters:
+        input_fields.append(html.Label(parameter[0], className="label"))
+        input_fields.append(
+            parse_function_parameter_doc(
+                parameter[1], parameter[2], parameter[3], selected_function
+            )
+        )
+    return input_fields
+
+
+@app.callback(
+    [Output("graph-cytoscape", "elements"), Output("modal", "is_open")],
+    [Input("graph_generate_button", "n_clicks")],
+    [State("graph_layout_dropdown", "value"), State("input_fields", "children")],
+    prevent_initial_call=True,
+)
+def button_click(n_clicks, value, html_input_children):
+    print(html_input_children)
+    if n_clicks is None:
+        return [], False
+    param_dict = {}
+    for child in html_input_children:
+        if child["type"] == "Label":
+            continue
+        param_name, param_value = handle_input_dict(child)
+        param_dict[param_name] = param_value
+    graph = call_graph_function_with_params(function_dict[value], param_dict)
+    return convert_networkx_to_cytoscape(graph), False
+
+
+def handle_input_dict(input_dict):
+    if input_dict["type"] == "BooleanSwitch":
+        value = input_dict["props"]["on"]
+    elif input_dict["props"]["type"] == "number":
+        value = input_dict["props"]["value"]
+    else:
+        value = json.loads(input_dict["props"]["value"])
+    name = input_dict["props"]["id"]
+    return name, value
+
+
+@app.callback(
     Output("modal", "is_open"),
-    [Input("open", "n_clicks"), Input("close", "n_clicks")],
+    [Input("open", "n_clicks")],
     [State("modal", "is_open")],
 )
-def toggle_modal(n1, n2, is_open):
-    if n1 or n2:
+def toggle_modal(n1, is_open):
+    if n1:
         return not is_open
     return is_open
 

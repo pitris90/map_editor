@@ -7,7 +7,8 @@ import random
 
 
 def kml_graph(kml_file_name, node_att=None, taxicab=False, distance_unit='meters', rounding=1, seed=None):
-    """Generates graphs from a kml file - exported from Google Maps.
+    """Graph from a kml file
+        Exported from google maps
     Attributes:
         kml_file_name  path to the kml file
         node_att       optional attributes updating the default values
