@@ -1,0 +1,29 @@
+graph_params:
+  loader: hardcoded
+  loader_params:
+    settings:
+      directed: false
+      node_att:
+        memory: 2
+      target_att:
+        memory: 1
+        value: 1
+      edge_att:
+        len: 10
+    targets:
+      T1:
+      T2:
+    nodes:
+      C:
+        memory: 2
+      N12:
+      N21:
+    edges:
+      - nodes: [ T1, N12 ]
+      - nodes: [ N12, N21 ]
+      - nodes: [ N21, T2 ]
+      - nodes: [ C, T1 ]
+        len: 13
+      - nodes: [ C, T2 ]
+        len: 13
+

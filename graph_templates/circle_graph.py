@@ -1,6 +1,14 @@
 import networkx
 
 def circle_graph(num_nodes, node_att=None):
+    """Circle Graph
+    Args:
+        Number of nodes - num_nodes (int): Amount of graph nodes
+        Node attributes- node_att (dict): Dictionary of node attributes
+
+    Returns:
+        return_type: Description of return value
+    """
     node_attributes = dict(value=100, attack_len=num_nodes, blindness=0.0, memory=1, target=True)
     node_attributes.update(node_att or {})
     graph = networkx.cycle_graph(num_nodes)

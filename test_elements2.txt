@@ -1,0 +1,113 @@
+test_elements = [
+    {
+        "data": {
+            "target": False,
+            "memory": 4,
+            "id": "center",
+            "value": "center",
+            "label": "center",
+        }
+    },
+    {
+        "data": {
+            "target": False,
+            "memory": 4,
+            "id": "H_0_0",
+            "value": "H_0_0",
+            "label": "H_0_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_0_0_0",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_0_0_0",
+            "label": "G_0_0_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_0_0_1",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_0_0_1",
+            "label": "G_0_0_1",
+        }
+    },
+    {
+        "data": {
+            "target": False,
+            "memory": 4,
+            "id": "H_1_0",
+            "value": "H_1_0",
+            "label": "H_1_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_1_0_0",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_1_0_0",
+            "label": "G_1_0_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_1_0_1",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_1_0_1",
+            "label": "G_1_0_1",
+        }
+    },
+    {
+        "data": {
+            "target": False,
+            "memory": 4,
+            "id": "H_2_0",
+            "value": "H_2_0",
+            "label": "H_2_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_2_0_0",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_2_0_0",
+            "label": "G_2_0_0",
+        }
+    },
+    {
+        "data": {
+            "target": True,
+            "value": "G_2_0_1",
+            "attack_len": 1,
+            "blindness": 0,
+            "memory": 1,
+            "id": "G_2_0_1",
+            "label": "G_2_0_1",
+        }
+    },
+    {"data": {"len": 1, "source": "center", "target": "H_0_0"}},
+    {"data": {"len": 1, "source": "center", "target": "H_1_0"}},
+    {"data": {"len": 1, "source": "center", "target": "H_2_0"}},
+    {"data": {"len": 1, "source": "H_0_0", "target": "G_0_0_0"}},
+    {"data": {"len": 1, "source": "H_0_0", "target": "G_0_0_1"}},
+    {"data": {"len": 1, "source": "H_1_0", "target": "G_1_0_0"}},
+    {"data": {"len": 1, "source": "H_1_0", "target": "G_1_0_1"}},
+    {"data": {"len": 1, "source": "H_2_0", "target": "G_2_0_0"}},
+    {"data": {"len": 1, "source": "H_2_0", "target": "G_2_0_1"}},
+]
