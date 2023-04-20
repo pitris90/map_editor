@@ -225,7 +225,7 @@ app.layout = html.Div(
             style={"width": "100%", "height": "700px"},
             layout={"name": "preset"},
             autoRefreshLayout=True,
-            boxSelectionEnabled=True
+            boxSelectionEnabled=True,
         ),
         html.Button("New Graph", id="new-graph-button"),
         dcc.Upload(id="upload-graph", children=html.Button("Upload Graph")),
@@ -246,14 +246,12 @@ app.layout = html.Div(
             ],
             id="modal",
         ),
-        html.Button("Move mode", id="move-mode-button", disabled=True),
-        html.Button("Edit mode", id="edit-mode-button"),
         html.Div(id="output-data-upload"),
         html.Div(id="position_click"),
         sidebar_container,
     ],
     tabIndex="0",
-    style={"outline": None}
+    style={"outline": None},
 )
 
 
@@ -577,14 +575,24 @@ def update_element_attributes_sidebar(
             break
         common_attr_idx = (name_input_idx - start_idx) // 2
         value_input_idx = name_input_idx + 1
-        value = extract_value_from_children(sidebar_children, value_input_idx)
         old_name = common_attrs[common_attr_idx]
         new_name = sidebar_children[name_input_idx]["props"]["value"]
-        elements[element_idx]["data"][add_attrs][old_name] = value
+        update_element_value_sidebar(
+            sidebar_children, value_input_idx, elements, element_idx, old_name
+        )
         elements[element_idx]["data"][add_attrs][new_name] = elements[element_idx][
             "data"
         ][add_attrs].pop(old_name)
         new_common_attrs[common_attr_idx] = new_name
+
+
+def update_element_value_sidebar(
+    sidebar_children, value_input_idx, elements, element_idx, attr_name
+):
+    if sidebar_children[value_input_idx]["type"] == "Label":
+        return
+    value = extract_value_from_children(sidebar_children, value_input_idx)
+    elements[element_idx]["data"][add_attrs][attr_name] = value
 
 
 def is_confirm_edit_button(sidebar_children, idx):
@@ -685,13 +693,10 @@ def add_button_click(
     ],
     prevent_initial_call=True,
 )
-def remove_button_click(n_clicks, sidebar_children, elements, remove_options, remove_value):
-    if (
-        n_clicks is None
-        or n_clicks < 1
-        or remove_value is None
-        or remove_value == ""
-    ):
+def remove_button_click(
+    n_clicks, sidebar_children, elements, remove_options, remove_value
+):
+    if n_clicks is None or n_clicks < 1 or remove_value is None or remove_value == "":
         return elements, sidebar_children
     elements_idxs = selected_items.get_elements_idxs()
     for element_idx in elements_idxs:
@@ -781,7 +786,6 @@ def save(_, elements):
         State("upload-graph", "filename"),
         State("graph-cytoscape", "elements"),
     ],
-    prevent_initial_call=False,
 )
 def update_output(contents, filename, elements):
     if contents is None:
@@ -816,12 +820,13 @@ def update_output(contents, filename, elements):
         Input("graph-cytoscape", "ehcompleteTarget"),
         State("graph-cytoscape", "elements"),
     ],
-    prevent_initial_call=False,
 )
 def rebind_new_edge(source, target, elements):
     if source is None or target is None:
         return elements
-    new_edge = {"data": {"source": source["id"], "target": target["id"], add_attrs: dict()}}
+    new_edge = {
+        "data": {"source": source["id"], "target": target["id"], add_attrs: dict()}
+    }
     elements.append(new_edge)
     return elements
 
@@ -970,35 +975,14 @@ def test_click(node_data):
 
 
 @app.callback(
-    [
-        Output("move-mode-button", "n_clicks"),
-        Output("edit-mode-button", "n_clicks"),
-        Output("move-mode-button", "disabled"),
-        Output("edit-mode-button", "disabled"),
-    ],
-    [Input("move-mode-button", "n_clicks"), Input("edit-mode-button", "n_clicks")],
-)
-def switch_modes(move_button_clicks, edit_mode_clicks):
-    if move_button_clicks == 0 and edit_mode_clicks == 0:
-        print("DEBUG: Button callback working")
-        return move_button_clicks, edit_mode_clicks, True, False
-    if move_button_clicks == 0 and edit_mode_clicks >= 1:
-        print("DEBUG: Switching to edit mode")
-        return 0, 0, False, True
-    print("DEBUG: Switching to move mode")
-    return 0, 0, True, False
-
-
-@app.callback(
     Output("graph-cytoscape", "elements"),
     [
-        Input("graph-cytoscape", "tapData"),
-        State("edit-mode-button", "disabled"),
+        Input("graph-cytoscape", "dblTapData"),
         State("graph-cytoscape", "elements"),
     ],
 )
-def add_node(pos, edit_mode_button_disabled, elements):
-    if not edit_mode_button_disabled:
+def add_node(pos, elements):
+    if pos is None:
         return elements
     node_id = id_generator.generate_id()
     new_node = {
@@ -1012,13 +996,12 @@ def add_node(pos, edit_mode_button_disabled, elements):
 @app.callback(
     Output("graph-cytoscape", "elements"),
     [
-        Input("graph-cytoscape", "tapNode"),
-        State("edit-mode-button", "disabled"),
+        Input("graph-cytoscape", "dblTapNode"),
         State("graph-cytoscape", "elements"),
     ],
 )
-def delete_node(node, edit_mode_button_disabled, elements):
-    if not edit_mode_button_disabled:
+def delete_node(node, elements):
+    if node is None:
         return elements
     node_id = node["data"]["id"]
     edges = node["edgesData"]
@@ -1043,13 +1026,12 @@ def is_removable_edge(edge, removable_edges):
 @app.callback(
     Output("graph-cytoscape", "elements"),
     [
-        Input("graph-cytoscape", "tapEdge"),
-        State("edit-mode-button", "disabled"),
+        Input("graph-cytoscape", "dblTapEdge"),
         State("graph-cytoscape", "elements"),
     ],
 )
-def delete_edge(edge, edit_mode_button_disabled, elements):
-    if not edit_mode_button_disabled:
+def delete_edge(edge, elements):
+    if edge is None:
         return elements
     source_id = edge["sourceData"]["id"]
     target_id = edge["targetData"]["id"]
