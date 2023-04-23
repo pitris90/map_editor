@@ -23,7 +23,7 @@ import importlib
 import re
 import ast
 import json
-from typing import List, Dict, Callable, Any, Union, Optional, Tuple
+from typing import List, Dict, Callable, Any, Union, Optional, Tuple, Type
 from type_aliases import (
     Graph,
     GraphFunction,
@@ -283,43 +283,6 @@ def handle_yaml_graph(networkx_data: Dict) -> GraphOrNone:
     return graph
 
 
-def parse_function_parameter_doc(
-    parameter_name: str,
-    parameter_type: str,
-    parameter_desc: str,
-    function: GraphFunction,
-) -> InputComponent:
-    params = inspect.signature(function).parameters
-    required = params[parameter_name].default is inspect.Parameter.empty
-    default = None
-    if not required:
-        default = params[parameter_name].default
-
-    if parameter_type == "int":
-        return dcc.Input(
-            id=parameter_name,
-            type="number",
-            min=0,
-            required=required,
-            value=default,
-            className="input",
-        )
-    elif parameter_type == "bool":
-        if default is None:
-            return daq.BooleanSwitch(id=parameter_name, on=False, className="input")
-        return daq.BooleanSwitch(id=parameter_name, on=default)
-    elif parameter_type == "dict":
-        return dcc.Input(
-            id=parameter_name,
-            type="text",
-            required=required,
-            value=default,
-            className="label",
-        )
-    else:
-        return html.Label("Unknown parameter type in __doc__")
-
-
 def call_graph_function_with_params(
     func_reference: GraphFunction, param_dict: Dict[str, Any]
 ) -> Graph:
@@ -350,16 +313,56 @@ def create_input_fields(selected_option: str) -> List[InputComponent]:
         return input_fields
     selected_function = function_dict[selected_option]
     doc = inspect.getdoc(selected_function)
-    pattern = r"\s*([\w\s]+\w)\s*-\s*(\w+)\s*\((\w+)\)\s*:\s*(.+)"
+    pattern = r"\s*([\w\s]+\w)\s*-\s*(\w+)\s*:\s*(.+)"
     parameters = re.findall(pattern, doc, flags=re.MULTILINE)
     for parameter in parameters:
         input_fields.append(html.Label(parameter[0], className="label"))
+        type_annotation = (
+            inspect.signature(selected_function).parameters[parameter[1]].annotation
+        )
         input_fields.append(
-            parse_function_parameter_doc(
-                parameter[1], parameter[2], parameter[3], selected_function
+            create_function_parameter_input_field(
+                parameter[1], type_annotation, parameter[2], selected_function
             )
         )
     return input_fields
+
+
+def create_function_parameter_input_field(
+    parameter_name: str,
+    parameter_type: Type,
+    parameter_desc: str,
+    function: GraphFunction,
+) -> InputComponent:
+    params = inspect.signature(function).parameters
+    required = params[parameter_name].default is inspect.Parameter.empty
+    default = None
+    if not required:
+        default = params[parameter_name].default
+
+    if parameter_type == int or parameter_type == float:
+        return dcc.Input(
+            id=parameter_name,
+            type="number",
+            min=0,
+            required=required,
+            value=default,
+            className="input",
+        )
+    elif parameter_type == bool:
+        if default is None:
+            return daq.BooleanSwitch(id=parameter_name, on=False, className="input")
+        return daq.BooleanSwitch(id=parameter_name, on=default)
+    elif parameter_type == dict or parameter_type == Optional[dict]:
+        return dcc.Input(
+            id=parameter_name,
+            type="text",
+            required=required,
+            value=str(default),
+            className="label",
+        )
+    else:
+        return html.Label("Unknown parameter type in function")
 
 
 @app.callback(
@@ -746,7 +749,7 @@ def button_click(
     n_clicks: int, value: str, html_input_children: List[InputComponent]
 ) -> Tuple[GraphElements, bool]:
     print(html_input_children)
-    if n_clicks is None:
+    if n_clicks is None or html_input_children is None:
         return [], False
     param_dict = {}
     for child in html_input_children:

@@ -1,10 +1,12 @@
 import networkx
+from typing import Optional
+from type_aliases import Graph
 
-def circle_graph(num_nodes, node_att=None):
+def circle_graph(num_nodes: int, node_att: Optional[dict]=None) -> Graph:
     """Circle Graph
     Args:
-        Number of nodes - num_nodes (int): Amount of graph nodes
-        Node attributes- node_att (dict): Dictionary of node attributes
+        Number of nodes - num_nodes: Amount of graph nodes
+        Node attributes - node_att: Dictionary of node attributes
 
     Returns:
         return_type: Description of return value

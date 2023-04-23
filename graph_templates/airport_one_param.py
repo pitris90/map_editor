@@ -1,16 +1,18 @@
 from airport_generator import airport_generator
 import random
 
+from type_aliases import Graph
 
-def airport_one_param(num_halls, rnd_seed=0, rnd_values=False):
+
+def airport_one_param(num_halls: int, rnd_seed: int=0, rnd_values: bool=False) -> Graph:
     """Airport with One Parameter
     Args:
-        Number of halls - num_halls (int): Amount of airport halls
-        Random seed - rnd_seed (int): Random seed
-        Random values - rnd_values (bool): Toggle random values
+        Number of halls - num_halls: Amount of airport halls
+        Random seed - rnd_seed: Random seed
+        Random values - rnd_values: Toggle random values
 
     Returns:
-        return_type: Description of return value
+        Graph: Description of return value
     """
     # 3-terminal airport with 'num_halls' halls, at least one in each terminal
     if num_halls < 3:
