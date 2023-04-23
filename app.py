@@ -137,7 +137,7 @@ def dropdown_functions(function_dict: Dict[str, GraphFunction]) -> List[Dict[str
     dropdown_options = []
     for key, item in function_dict.items():
         doc = inspect.getdoc(item)
-        if doc is None:
+        if doc is None or not is_function_typed(item):
             continue
         match = re.search(r"(.+?)\n", doc)
         if not match:
@@ -145,6 +145,16 @@ def dropdown_functions(function_dict: Dict[str, GraphFunction]) -> List[Dict[str
         name = match.group(1)
         dropdown_options.append({"label": name, "value": key})
     return dropdown_options
+
+
+def is_function_typed(function: GraphFunction) -> bool:
+    sig = inspect.signature(function)
+    if sig.return_annotation == inspect.Parameter.empty:
+        return False
+    for _, value in sig.parameters.items():
+        if value.annotation == inspect.Parameter.empty:
+            return False
+    return True
 
 
 # proxy_wrapper_map = {
