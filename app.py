@@ -24,13 +24,14 @@ import re
 import ast
 import json
 from typing import List, Dict, Callable, Any, Union, Optional, Tuple
+from type_aliases import (
+    Graph,
+    GraphFunction,
+    GraphOrNone,
+    GraphElements,
+    InputComponent,
+)
 from functools import reduce
-
-Graph = Union[nx.Graph, nx.DiGraph]
-GraphFunction = Callable[..., Graph]
-GraphOrNone = Optional[Graph]
-GraphElements = List[Dict[str, Any]]
-InputComponent = Union[html.Label, dcc.Input, daq.BooleanSwitch]
 
 
 class DocError(ValueError):
