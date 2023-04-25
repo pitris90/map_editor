@@ -340,7 +340,11 @@ def create_function_parameter_input_field(
     if not required:
         default = params[parameter_name].default
 
-    if parameter_type == int or parameter_type == float:
+    if (
+        parameter_type == int
+        or parameter_type == float
+        or parameter_type == Optional[int]
+    ):
         return dcc.Input(
             id=parameter_name,
             type="number",
@@ -353,7 +357,12 @@ def create_function_parameter_input_field(
         if default is None:
             return daq.BooleanSwitch(id=parameter_name, on=False, className="input")
         return daq.BooleanSwitch(id=parameter_name, on=default)
-    elif parameter_type == dict or parameter_type == Optional[dict]:
+    elif (
+        parameter_type == dict
+        or parameter_type == Optional[dict]
+        or parameter_type == Optional[list]
+        or parameter_type == list
+    ):
         return dcc.Input(
             id=parameter_name,
             type="text",
