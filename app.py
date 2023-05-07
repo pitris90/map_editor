@@ -257,6 +257,7 @@ app.layout = html.Div(
             ],
             id="modal",
         ),
+        html.Button("Debug Button", id="main-debug-button"),
         html.Div(id="output-data-upload"),
         html.Div(id="position_click"),
         sidebar_container,
@@ -970,7 +971,7 @@ def convert_edge_to_yaml_dict(element):
 @app.callback(
     Output("output-data-upload", "children"),
     [
-        Input("new-graph-button", "n_clicks"),
+        Input("main-debug-button", "n_clicks"),
         State("graph-cytoscape", "elements"),
         State("graph-cytoscape", "selectedNodeData"),
         State("graph-cytoscape", "selectedEdgeData"),
@@ -985,6 +986,20 @@ def test_graph(n, elements, node_data, edge_data):
         print(edge_data)
         return "Klik"
     return "Neklik"
+
+
+@app.callback(
+    Output("graph-cytoscape", "elements"),
+    [
+        Input("new-graph-button", "n_clicks"),
+        State("graph-cytoscape", "elements")
+    ]
+)
+def new_graph(n, elements):
+    if n is not None and n > 0:
+        id_generator.reset()
+        return []
+    return elements
 
 
 @app.callback(
