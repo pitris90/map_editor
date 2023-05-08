@@ -659,11 +659,10 @@ def is_confirm_edit_button(
 
 def extract_value_from_children(
     children: Union[list[dict], dict],
-    value_input_idx: Optional[int] = None,
+    value_input_idx: int = 0,
     dropdown_value: str = "",
 ) -> InputValue:
-    value = 0
-    if value_input_idx is None and isinstance(children, dict):
+    if isinstance(children, dict):
         if children["type"] == "Input" and (
             children["props"]["id"][:5] == "dict_" or dropdown_value == "Dictionary"
         ):
@@ -672,7 +671,7 @@ def extract_value_from_children(
             value = children["props"]["value"]
         else:
             value = children["props"]["on"]
-    elif value_input_idx is not None and isinstance(children, list):
+    else:
         if children[value_input_idx]["type"] == "Input" and (
             children[value_input_idx]["props"]["id"][:5] == "dict_"
             or dropdown_value == "Dictionary"
