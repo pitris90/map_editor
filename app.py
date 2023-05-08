@@ -227,15 +227,33 @@ sidebar_container = html.Div(
 
 graphxdd = nx.Graph()
 
-test_elements2 = [{"data": {"id": "center", "label": "center", "add_data": False}}]
+# test_elements2 = [{"data": {"id": "center", "label": "center", "add_data": False}}]
 
 app.layout = html.Div(
     id="app-window",
     children=[
+        daq.BooleanSwitch(
+            on=False, id="orientation-graph-switcher", label="Undirected"
+        ),
         cyto.Cytoscape(
             id="graph-cytoscape",
-            elements=test_elements2,
+            elements=[],
             style={"width": "100%", "height": "700px"},
+            stylesheet=[
+                {
+                    "selector": "edge",
+                    "style": {
+                        "curve-style": "bezier",
+                        "target-arrow-shape": "none",
+                    },
+                },
+                {
+                    "selector": "node",
+                    "style": {
+                        "label": "data(label)",
+                    },
+                },
+            ],
             layout={"name": "preset"},
             autoRefreshLayout=True,
             boxSelectionEnabled=True,
@@ -460,7 +478,14 @@ def extract_attribute_names(selected_item: dict) -> set:
 
 
 def count_unique_values(values: list[dict], key: str) -> int:
-    return len(set(value[key] for value in values))
+    unique_set = set()
+    for value in values:
+        dict_value = value[key]
+        if isinstance(dict_value, dict):
+            dict_value = json.dumps(dict_value, sort_keys=True)
+        unique_set.add(dict_value)
+    return len(unique_set)
+    # return len(set(value[key] for value in values))
 
 
 def create_attribute_input_field(
@@ -792,14 +817,28 @@ def remove_button_click(
 
 
 @app.callback(
-    [Output("graph-cytoscape", "elements"), Output("modal", "is_open")],
-    [Input("graph_generate_button", "n_clicks")],
-    [State("graph_layout_dropdown", "value"), State("input_fields", "children")],
+    [
+        Output("graph-cytoscape", "elements"),
+        Output("modal", "is_open"),
+        Output("orientation-graph-switcher", "on"),
+        Output("orientation-graph-switcher", "label"),
+        Output("graph-cytoscape", "stylesheet"),
+    ],
+    [
+        Input("graph_generate_button", "n_clicks"),
+        State("graph_layout_dropdown", "value"),
+        State("input_fields", "children"),
+        State("graph-cytoscape", "stylesheet"),
+    ],
     prevent_initial_call=True,
 )
 def button_click(
-    n_clicks: int, value: str, html_input_children: list[InputComponent]
-) -> Tuple[GraphElements, bool]:
+    n_clicks: int,
+    value: str,
+    html_input_children: list[InputComponent],
+    directed: bool,
+    stylesheet: list[dict],
+) -> tuple[GraphElements, bool, bool, str, list[dict]]:
     print(html_input_children)
     if n_clicks is None or html_input_children is None:
         return [], False
@@ -810,7 +849,9 @@ def button_click(
         param_name, param_value = handle_input_dict(child)
         param_dict[param_name] = param_value
     graph = call_graph_function_with_params(function_dict[value], param_dict)
-    return convert_networkx_to_cytoscape(graph), False
+    cytoscape_elements, directed = convert_networkx_to_cytoscape(graph)
+    label, stylesheet = graph_orientation_switcher(directed, stylesheet)
+    return cytoscape_elements, False, directed, label, stylesheet
 
 
 def handle_input_dict(input_dict: dict) -> tuple[str, InputValue]:
@@ -837,27 +878,44 @@ def toggle_modal(n1: Optional[int], is_open: bool) -> bool:
 
 @app.callback(
     Output("save-graph", "data"),
-    [Input("save-graph-image", "n_clicks"), State("graph-cytoscape", "elements")],
+    [
+        Input("save-graph-image", "n_clicks"),
+        State("graph-cytoscape", "elements"),
+        State("orientation-graph-switcher", "on"),
+    ],
     prevent_initial_call=True,
 )
-def save(_: Optional[int], elements: GraphElements) -> dict:
-    yaml_dict = convert_cytoscape_to_yaml_dict(elements)
+def save(_: Optional[int], elements: GraphElements, directed: bool) -> dict:
+    yaml_dict = convert_cytoscape_to_yaml_dict(elements, directed)
     return dcc.send_string(yaml.dump(yaml_dict), "graph.yml")
 
 
 @app.callback(
-    Output("graph-cytoscape", "elements"),
+    [
+        Output("graph-cytoscape", "elements"),
+        Output("orientation-graph-switcher", "on"),
+        Output("orientation-graph-switcher", "label"),
+        Output("graph-cytoscape", "stylesheet"),
+    ],
     [
         Input("upload-graph", "contents"),
         State("upload-graph", "filename"),
         State("graph-cytoscape", "elements"),
+        State("orientation-graph-switcher", "on"),
+        State("orientation-graph-switcher", "label"),
+        State("graph-cytoscape", "stylesheet"),
     ],
 )
 def update_output(
-    contents: Optional[str], filename: Optional[str], elements: GraphElements
-) -> GraphElements:
+    contents: Optional[str],
+    filename: Optional[str],
+    elements: GraphElements,
+    directed: bool,
+    label: str,
+    stylesheet: list[dict],
+) -> tuple[GraphElements, bool, str, list[dict]]:
     if contents is None:
-        return []
+        return [], directed, label, stylesheet
         # read the uploaded file and convert it to a NetworkX graph
     content_type, content_string = contents.split(",")
     decoded = base64.b64decode(content_string)
@@ -875,10 +933,10 @@ def update_output(
     # xdelements = (
     #     cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
     # )
-    test_data = convert_networkx_to_cytoscape(graph)
-    # test_graph = convert_cytoscape_to_networkx(test_data)
-    elements = test_data
-    return elements
+    elements, directed = convert_networkx_to_cytoscape(graph)
+    label, stylesheet = graph_orientation_switcher(directed, stylesheet)
+    # test_graph = convert_cytoscape_to_networkx(elements)
+    return elements, directed, label, stylesheet
 
 
 @app.callback(
@@ -887,14 +945,20 @@ def update_output(
         Input("graph-cytoscape", "ehcompleteSource"),
         Input("graph-cytoscape", "ehcompleteTarget"),
         State("graph-cytoscape", "elements"),
+        State("orientation-graph-switcher", "on"),
     ],
 )
 def rebind_new_edge(
     source: Optional[GraphElement],
     target: Optional[GraphElement],
     elements: GraphElements,
+    directed: bool,
 ) -> GraphElements:
-    if source is None or target is None:
+    if (
+        source is None
+        or target is None
+        or not can_add_new_edge(source, target, elements, directed)
+    ):
         return elements
     new_edge = {
         "data": {"source": source["id"], "target": target["id"], add_attrs: dict()}
@@ -903,22 +967,52 @@ def rebind_new_edge(
     return elements
 
 
-def convert_networkx_to_cytoscape(graph: Graph) -> GraphElements:
+def can_add_new_edge(
+    source: GraphElement, target: GraphElement, elements: GraphElements, directed: bool
+) -> bool:
+    target_id = target["id"]
+    source_id = source["id"]
+    for element in elements:
+        if is_node(element):
+            continue
+        element_source_id = element["data"]["source"]
+        element_target_id = element["data"]["target"]
+        same_edge = element_source_id == source_id and element_target_id == target_id
+        if (
+            directed
+            and same_edge
+            or not directed
+            and (
+                same_edge
+                or element_source_id == target_id
+                and element_target_id == source_id
+            )
+        ):
+            return False
+    return True
+
+
+def convert_networkx_to_cytoscape(graph: Graph) -> tuple[GraphElements, bool]:
     x_idx = 0
     y_idx = 1
     scaling_factor = 500
     cyto_nodes = []
     positions = nx.spring_layout(graph)
+    if isinstance(graph, nx.DiGraph):
+        directed = True
+    else:
+        directed = False
     id_generator.reset()
     for node in graph.nodes():
         # Get the node attributes from the NetworkX graph
         node_attrs = graph.nodes[node]
-        if node_attrs.get("position", True):
+        if node_attrs.get("position", True) == True:
             position_x = positions[node][x_idx] * scaling_factor
             position_y = positions[node][y_idx] * scaling_factor
         else:
             position_x = node_attrs["position"]["x"]
             position_y = node_attrs["position"]["y"]
+            node_attrs.pop("position")
         id_generator.increment_id()
 
         # Create a dictionary representing the Cytoscape node with the modified attributes
@@ -948,9 +1042,10 @@ def convert_networkx_to_cytoscape(graph: Graph) -> GraphElements:
 
         # Add the Cytoscape edge to the list of edges
         cyto_edges.append(cyto_edge)
-    return cyto_nodes + cyto_edges
+    return cyto_nodes + cyto_edges, directed
 
 
+# LEGACY TEST FUNCTION
 def convert_cytoscape_to_networkx(elements: GraphElements) -> Graph:
     # Create an empty NetworkX graph
     nx_graph = nx.Graph()
@@ -973,7 +1068,7 @@ def convert_cytoscape_to_networkx(elements: GraphElements) -> Graph:
     return nx_graph
 
 
-def convert_cytoscape_to_yaml_dict(elements: GraphElements) -> dict:
+def convert_cytoscape_to_yaml_dict(elements: GraphElements, directed: bool) -> dict:
     # temporary - now only converting to non directed graph settings
     nodes = {}
     edges = []
@@ -988,7 +1083,7 @@ def convert_cytoscape_to_yaml_dict(elements: GraphElements) -> dict:
         "graph_params": {
             "loader": "hardcoded",
             "loader_params": {
-                "settings": {"directed": False},
+                "settings": {"directed": directed},
                 "targets": {},
                 "nodes": nodes,
                 "edges": edges,
@@ -1028,12 +1123,21 @@ def convert_edge_to_yaml_dict(element: GraphElement) -> dict:
     [
         Input("main-debug-button", "n_clicks"),
         State("graph-cytoscape", "elements"),
+        State("graph-cytoscape", "tapNode"),
         State("graph-cytoscape", "selectedNodeData"),
         State("graph-cytoscape", "selectedEdgeData"),
+        State("graph-cytoscape", "stylesheet"),
+        State("graph-cytoscape", "ele_move_pos"),
     ],
 )
 def test_graph(
-    n: Optional[int], elements: GraphElements, node_data: list, edge_data: list
+    n: Optional[int],
+    elements: GraphElements,
+    tapNode: Any,
+    node_data: list,
+    edge_data: list,
+    stylesheet: list,
+    new_posiiton: Any,
 ) -> str:
     if n:
         print(elements)
@@ -1043,6 +1147,43 @@ def test_graph(
         print(edge_data)
         return "Klik"
     return "Neklik"
+
+
+@app.callback(
+    Output("graph-cytoscape", "elements"),
+    [
+        Input("graph-cytoscape", "ele_move_pos"),
+        State("graph-cytoscape", "ele_move_data"),
+        State("graph-cytoscape", "elements"),
+        State("graph-cytoscape", "selectedNodeData"),
+    ],
+)
+def update_positions(
+    new_node_position: dict,
+    moved_node_data: dict,
+    elements: GraphElements,
+    selected_node_data: Optional[list],
+) -> GraphElements:
+    element_edited = False
+    for element in elements:
+        if is_node(element) and element["data"]["id"] == moved_node_data["id"]:
+            x_diff = new_node_position["x"] - element["position"]["x"]
+            y_diff = new_node_position["y"] - element["position"]["y"]
+            element["position"] = new_node_position
+            element_edited = True
+            break
+    if selected_node_data is None or len(selected_node_data) == 0 or not element_edited:
+        return elements
+    for idx in selected_items.get_elements_idxs():
+        if (
+            is_node(elements[idx])
+            and elements[idx]["data"]["id"] == moved_node_data["id"]
+        ):
+            continue
+        if is_node(elements[idx]):
+            elements[idx]["position"]["x"] += x_diff
+            elements[idx]["position"]["y"] += y_diff
+    return elements
 
 
 @app.callback(
@@ -1064,6 +1205,31 @@ def test_click(node_data: dict) -> str:
     print("\n")
     print(node_data)
     return "Pozice kliknuti"
+
+
+@app.callback(
+    [
+        Output("orientation-graph-switcher", "label"),
+        Output("graph-cytoscape", "stylesheet"),
+    ],
+    [Input("orientation-graph-switcher", "on"), State("graph-cytoscape", "stylesheet")],
+)
+def graph_orientation_switcher(
+    directed: bool, stylesheet: list[dict]
+) -> tuple[str, list[dict]]:
+    for selector in stylesheet:
+        if selector["selector"] == "edge":
+            selector["style"]["target-arrow-shape"] = edge_target_arrow_shape(directed)
+            break
+    if directed:
+        return "Directed", stylesheet
+    return "Undirected", stylesheet
+
+
+def edge_target_arrow_shape(directed: bool) -> str:
+    if directed:
+        return "triangle"
+    return "none"
 
 
 @app.callback(
