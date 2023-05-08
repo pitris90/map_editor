@@ -865,14 +865,20 @@ def convert_networkx_to_cytoscape(graph: nx.Graph):
     for node in graph.nodes():
         # Get the node attributes from the NetworkX graph
         node_attrs = graph.nodes[node]
+        if node_attrs.get("position", True):
+            position_x = positions[node][x_idx] * scaling_factor
+            position_y = positions[node][y_idx] * scaling_factor
+        else:
+            position_x = node_attrs["position"]["x"]
+            position_y = node_attrs["position"]["y"]
         id_generator.increment_id()
 
         # Create a dictionary representing the Cytoscape node with the modified attributes
         cyto_node = {
             "data": {"id": str(node), "label": str(node), add_attrs: node_attrs},
             "position": {
-                "x": positions[node][x_idx] * scaling_factor,
-                "y": positions[node][y_idx] * scaling_factor,
+                "x": position_x,
+                "y": position_y,
             },
         }
 
@@ -905,10 +911,7 @@ def convert_cytoscape_to_networkx(elements):
     for element in elements:
         if is_node(element):
             # This element is a node
-            node_id = element["data"]["id"]
-            node_attrs = {
-                key: value for key, value in element["data"][add_attrs].items()
-            }
+            node_id, node_attrs = create_node_attributes(element)
             nx_graph.add_node(node_id, **node_attrs)
         else:
             # This element is an edge
@@ -928,10 +931,7 @@ def convert_cytoscape_to_yaml_dict(elements):
     edges = []
     for element in elements:
         if is_node(element):
-            node_id = element["data"]["id"]
-            node_attrs = {
-                key: value for key, value in element["data"][add_attrs].items()
-            }
+            node_id, node_attrs = create_node_attributes(element)
             nodes[str(node_id)] = node_attrs
         else:
             edges.append(convert_edge_to_yaml_dict(element))
@@ -949,6 +949,14 @@ def convert_cytoscape_to_yaml_dict(elements):
     }
     return yaml_dict
 
+
+def create_node_attributes(node):
+    node_id = node["data"]["id"]
+    node_attrs = {
+        key: value for key, value in node["data"][add_attrs].items()
+        }
+    node_attrs["position"] = node["position"]
+    return node_id, node_attrs
 
 def is_node(element):
     return "source" not in element["data"] and "target" not in element["data"]
