@@ -308,7 +308,7 @@ def call_graph_function_with_params(
     prevent_initial_call=True,
 )
 def create_input_fields(selected_option: str) -> List[InputComponent]:
-    # using global variable
+    # using global constant
     input_fields = []
     if selected_option is None:
         return input_fields
