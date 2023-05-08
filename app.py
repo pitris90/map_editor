@@ -23,13 +23,15 @@ import importlib
 import re
 import ast
 import json
-from typing import List, Dict, Callable, Any, Union, Optional, Tuple, Type
+from typing import Callable, Any, Union, Optional, Tuple, Type
 from type_aliases import (
     Graph,
     GraphFunction,
     GraphOrNone,
     GraphElements,
+    GraphElement,
     InputComponent,
+    InputValue,
 )
 from functools import reduce
 
@@ -57,45 +59,45 @@ class Id_generator:
 
 class Selected_items:
     def __init__(self) -> None:
-        self._selected_common_attrs = []
-        self._selected_elements = []
-        self._selected_edges = []
-        self._selected_nodes = []
-        self._selected_elements_idxs = []
+        self._selected_common_attrs: list = []
+        self._selected_elements: GraphElements = []
+        self._selected_edges: GraphElements = []
+        self._selected_nodes: GraphElements = []
+        self._selected_elements_idxs: list = []
 
-    def set_attrs(self, selected_common_attrs):
+    def set_attrs(self, selected_common_attrs: list) -> None:
         self._selected_common_attrs = selected_common_attrs
 
-    def get_attrs(self):
+    def get_attrs(self) -> list:
         return self._selected_common_attrs.copy()
 
-    def set_elements(self, selected_elements):
+    def set_elements(self, selected_elements: GraphElements) -> None:
         self._selected_elements = selected_elements
 
-    def get_elements(self):
+    def get_elements(self) -> GraphElements:
         return self._selected_elements.copy()
 
-    def set_edges(self, selected_edges):
+    def set_edges(self, selected_edges: GraphElements) -> None:
         self._selected_edges = selected_edges
 
-    def get_edges(self):
+    def get_edges(self) -> GraphElements:
         return self._selected_edges.copy()
 
-    def set_nodes(self, selected_nodes):
+    def set_nodes(self, selected_nodes: GraphElements) -> None:
         self._selected_nodes = selected_nodes
 
-    def get_edges(self):
+    def get_nodes(self) -> GraphElements:
         return self._selected_nodes.copy()
 
-    def generate_selected_elements_idxs(self, elements):
-        selected_elements_idxs = []
+    def generate_selected_elements_idxs(self, elements: GraphElements) -> None:
+        selected_elements_idxs: list = []
         for i in range(0, len(elements)):
             self._append_idx_if_selected_element(elements, i, selected_elements_idxs)
         self._selected_elements_idxs = selected_elements_idxs
 
     def _append_idx_if_selected_element(
-        self, elements, element_idx, selected_elements_idxs
-    ):
+        self, elements: GraphElements, element_idx: int, selected_elements_idxs: list
+    ) -> None:
         for selected_node in self._selected_nodes:
             if (
                 is_node(elements[element_idx])
@@ -110,7 +112,7 @@ class Selected_items:
             ):
                 selected_elements_idxs.append(element_idx)
 
-    def get_elements_idxs(self):
+    def get_elements_idxs(self) -> list:
         return self._selected_elements_idxs
 
 
@@ -133,7 +135,7 @@ for filename in os.listdir(directory):
         function_dict[module_name] = function
 
 
-def dropdown_functions(function_dict: Dict[str, GraphFunction]) -> List[Dict[str, str]]:
+def dropdown_functions(function_dict: dict[str, GraphFunction]) -> list[dict[str, str]]:
     dropdown_options = []
     for key, item in function_dict.items():
         doc = inspect.getdoc(item)
@@ -267,7 +269,7 @@ app.layout = html.Div(
 )
 
 
-def handle_yaml_graph(networkx_data: Dict) -> GraphOrNone:
+def handle_yaml_graph(networkx_data: dict) -> GraphOrNone:
     networkx_data = networkx_data.get("graph_params", None)
     if networkx_data is None:
         print("Bad yaml file")
@@ -285,7 +287,7 @@ def handle_yaml_graph(networkx_data: Dict) -> GraphOrNone:
 
 
 def call_graph_function_with_params(
-    func_reference: GraphFunction, param_dict: Dict[str, Any]
+    func_reference: GraphFunction, param_dict: dict[str, Any]
 ) -> Graph:
     params = inspect.signature(func_reference).parameters  # get function parameters
     kwargs = {}
@@ -307,13 +309,15 @@ def call_graph_function_with_params(
     [Input("graph_layout_dropdown", "value")],
     prevent_initial_call=True,
 )
-def create_input_fields(selected_option: str) -> List[InputComponent]:
+def create_input_fields(selected_option: str) -> list[InputComponent]:
     # using global constant
-    input_fields = []
+    input_fields: list = []
     if selected_option is None:
         return input_fields
     selected_function = function_dict[selected_option]
     doc = inspect.getdoc(selected_function)
+    if doc is None:
+        return input_fields
     pattern = r"\s*([\w\s]+\w)\s*-\s*(\w+)\s*:\s*(.+)"
     parameters = re.findall(pattern, doc, flags=re.MULTILINE)
     for parameter in parameters:
@@ -383,7 +387,11 @@ def create_function_parameter_input_field(
         State("graph-cytoscape", "elements"),
     ],
 )
-def create_attribute_input_fields(selected_nodes, selected_edges, elements):
+def create_attribute_input_fields(
+    selected_nodes: GraphElements,
+    selected_edges: GraphElements,
+    elements: GraphElements,
+) -> html.Div:
     selected_nodes, selected_edges = optional_none_to_empty_list(
         selected_nodes
     ), optional_none_to_empty_list(selected_edges)
@@ -391,13 +399,13 @@ def create_attribute_input_fields(selected_nodes, selected_edges, elements):
     if len(selected_nodes_edges) == 0:
         return []
     sidebar_children = []
-    attributes = []
+    attributes: list = []
     additional_attrs = []
     for selected_item in selected_nodes_edges:
         additional_attr = selected_item[add_attrs]
         attributes.append(extract_attribute_names(additional_attr))
         additional_attrs.append(additional_attr)
-    common_attr = list(reduce(set.intersection, attributes))
+    common_attr = list(reduce(set.intersection, attributes))  # type: ignore
     selected_items.set_attrs(common_attr)
     selected_items.set_elements(selected_nodes_edges)
     selected_items.set_nodes(selected_nodes)
@@ -441,21 +449,23 @@ def create_attribute_input_fields(selected_nodes, selected_edges, elements):
     return sidebar
 
 
-def optional_none_to_empty_list(optional_list):
+def optional_none_to_empty_list(optional_list: Optional[list]) -> list:
     if optional_list is None:
         return []
     return optional_list
 
 
-def extract_attribute_names(selected_item):
+def extract_attribute_names(selected_item: dict) -> set:
     return set(selected_item.keys())
 
 
-def count_unique_values(values, key):
+def count_unique_values(values: list[dict], key: str) -> int:
     return len(set(value[key] for value in values))
 
 
-def create_attribute_input_field(additional_attrs, value_count, key):
+def create_attribute_input_field(
+    additional_attrs: list[dict], value_count: int, key: str
+) -> list:
     input_fields = []
     first_dict = additional_attrs[0]
     input_fields.append(create_attribute_name_input_field(key))
@@ -467,7 +477,9 @@ def create_attribute_input_field(additional_attrs, value_count, key):
     return input_fields
 
 
-def create_attribute_value_input_field(input_value, attr_name):
+def create_attribute_value_input_field(
+    input_value: InputValue, attr_name: str
+) -> InputComponent:
     dict_id = ""
     if isinstance(input_value, bool):
         return daq.BooleanSwitch(id="value_" + attr_name, on=input_value)
@@ -482,11 +494,11 @@ def create_attribute_value_input_field(input_value, attr_name):
     )
 
 
-def create_attribute_name_input_field(attr_name):
+def create_attribute_name_input_field(attr_name: str) -> InputComponent:
     return dcc.Input(value=attr_name, type="text", id="key_" + attr_name)
 
 
-def dict_id_addition(value):
+def dict_id_addition(value: Union[str, dict]) -> str:
     if isinstance(value, dict):
         return "dict_"
     return "text_"
@@ -504,7 +516,11 @@ def dict_id_addition(value):
     ],
     prevent_initial_call=True,
 )
-def set_attribute_value_input_type(dropdown_value, attribute_name, container_children):
+def set_attribute_value_input_type(
+    dropdown_value: Optional[str],
+    attribute_name: Optional[str],
+    container_children: Optional[InputComponent],
+) -> tuple[InputComponent, bool]:
     if dropdown_value is None:
         return [], True
     disabled = attribute_name is None or attribute_name == ""
@@ -529,7 +545,9 @@ def set_attribute_value_input_type(dropdown_value, attribute_name, container_chi
     return input_field, disabled
 
 
-def is_right_input_type(dropdown_value, container_children):
+def is_right_input_type(
+    dropdown_value: str, container_children: InputComponent
+) -> bool:
     return (
         dropdown_value == "Boolean"
         and container_children["type"] == "BooleanSwitch"
@@ -549,7 +567,7 @@ def is_right_input_type(dropdown_value, container_children):
     Output("remove-attribute-button", "disabled"),
     Input("remove-attribute-dropdown", "value"),
 )
-def remove_button_disabler(dropdown_value):
+def remove_button_disabler(dropdown_value: Optional[str]) -> bool:
     return dropdown_value is None or dropdown_value == ""
 
 
@@ -566,7 +584,12 @@ def remove_button_disabler(dropdown_value):
     ],
     prevent_initial_call=True,
 )
-def confirm_button_click(n_clicks, sidebar_children, elements, dropdown_options):
+def confirm_button_click(
+    n_clicks: Optional[int],
+    sidebar_children: list[InputComponent],
+    elements: GraphElements,
+    dropdown_options: Optional[list],
+) -> tuple[GraphElements, Optional[list]]:
     if (
         n_clicks is None
         or n_clicks < 1
@@ -592,8 +615,13 @@ def confirm_button_click(n_clicks, sidebar_children, elements, dropdown_options)
 
 
 def update_element_attributes_sidebar(
-    start_idx, sidebar_children, element_idx, elements, common_attrs, new_common_attrs
-):
+    start_idx: int,
+    sidebar_children: list[InputComponent],
+    element_idx: int,
+    elements: GraphElements,
+    common_attrs: list,
+    new_common_attrs: list,
+) -> None:
     for name_input_idx in range(start_idx, len(sidebar_children), 2):
         if is_confirm_edit_button(sidebar_children, name_input_idx):
             break
@@ -611,20 +639,31 @@ def update_element_attributes_sidebar(
 
 
 def update_element_value_sidebar(
-    sidebar_children, value_input_idx, elements, element_idx, attr_name
-):
+    sidebar_children: list[InputComponent],
+    value_input_idx: int,
+    elements: GraphElements,
+    element_idx: int,
+    attr_name: str,
+) -> None:
     if sidebar_children[value_input_idx]["type"] == "Label":
         return
     value = extract_value_from_children(sidebar_children, value_input_idx)
     elements[element_idx]["data"][add_attrs][attr_name] = value
 
 
-def is_confirm_edit_button(sidebar_children, idx):
+def is_confirm_edit_button(
+    sidebar_children: list[InputComponent], idx: int
+) -> InputComponent:
     return sidebar_children[idx]["props"].get("id", "") == "confirm-edit-button"
 
 
-def extract_value_from_children(children, value_input_idx=None, dropdown_value=""):
-    if value_input_idx is None:
+def extract_value_from_children(
+    children: Union[list[dict], dict],
+    value_input_idx: Optional[int] = None,
+    dropdown_value: str = "",
+) -> InputValue:
+    value = 0
+    if value_input_idx is None and isinstance(children, dict):
         if children["type"] == "Input" and (
             children["props"]["id"][:5] == "dict_" or dropdown_value == "Dictionary"
         ):
@@ -633,7 +672,7 @@ def extract_value_from_children(children, value_input_idx=None, dropdown_value="
             value = children["props"]["value"]
         else:
             value = children["props"]["on"]
-    else:
+    elif value_input_idx is not None and isinstance(children, list):
         if children[value_input_idx]["type"] == "Input" and (
             children[value_input_idx]["props"]["id"][:5] == "dict_"
             or dropdown_value == "Dictionary"
@@ -660,14 +699,14 @@ def extract_value_from_children(children, value_input_idx=None, dropdown_value="
     prevent_initial_call=True,
 )
 def add_button_click(
-    n_clicks,
-    sidebar_children,
-    elements,
-    dropdown_options,
-    new_attribute_name,
-    attr_val_container_children,
-    type_dropdown_value,
-):
+    n_clicks: Optional[int],
+    sidebar_children: list,
+    elements: GraphElements,
+    dropdown_options: list,
+    new_attribute_name: Optional[str],
+    attr_val_container_children: Optional[list],
+    type_dropdown_value: str,
+) -> tuple[GraphElements, list]:
     if (
         n_clicks is None
         or n_clicks < 1
@@ -718,8 +757,12 @@ def add_button_click(
     prevent_initial_call=True,
 )
 def remove_button_click(
-    n_clicks, sidebar_children, elements, remove_options, remove_value
-):
+    n_clicks: Optional[int],
+    sidebar_children: list,
+    elements: GraphElements,
+    remove_options: list,
+    remove_value: Optional[str],
+) -> tuple[GraphElements, list]:
     if n_clicks is None or n_clicks < 1 or remove_value is None or remove_value == "":
         return elements, sidebar_children
     elements_idxs = selected_items.get_elements_idxs()
@@ -756,7 +799,7 @@ def remove_button_click(
     prevent_initial_call=True,
 )
 def button_click(
-    n_clicks: int, value: str, html_input_children: List[InputComponent]
+    n_clicks: int, value: str, html_input_children: list[InputComponent]
 ) -> Tuple[GraphElements, bool]:
     print(html_input_children)
     if n_clicks is None or html_input_children is None:
@@ -771,7 +814,7 @@ def button_click(
     return convert_networkx_to_cytoscape(graph), False
 
 
-def handle_input_dict(input_dict):
+def handle_input_dict(input_dict: dict) -> tuple[str, InputValue]:
     if input_dict["type"] == "BooleanSwitch":
         value = input_dict["props"]["on"]
     elif input_dict["props"]["type"] == "number":
@@ -787,7 +830,7 @@ def handle_input_dict(input_dict):
     [Input("open", "n_clicks")],
     [State("modal", "is_open")],
 )
-def toggle_modal(n1, is_open):
+def toggle_modal(n1: Optional[int], is_open: bool) -> bool:
     if n1:
         return not is_open
     return is_open
@@ -798,7 +841,7 @@ def toggle_modal(n1, is_open):
     [Input("save-graph-image", "n_clicks"), State("graph-cytoscape", "elements")],
     prevent_initial_call=True,
 )
-def save(_, elements):
+def save(_: Optional[int], elements: GraphElements) -> dict:
     yaml_dict = convert_cytoscape_to_yaml_dict(elements)
     return dcc.send_string(yaml.dump(yaml_dict), "graph.yml")
 
@@ -811,7 +854,9 @@ def save(_, elements):
         State("graph-cytoscape", "elements"),
     ],
 )
-def update_output(contents, filename, elements):
+def update_output(
+    contents: Optional[str], filename: Optional[str], elements: GraphElements
+) -> GraphElements:
     if contents is None:
         return []
         # read the uploaded file and convert it to a NetworkX graph
@@ -821,18 +866,18 @@ def update_output(contents, filename, elements):
     graph = handle_yaml_graph(network_data)
     cytoscape_graph = nx.cytoscape_data(graph)
     # convert the NetworkX data to a Cytoscape-compatible JSON format
-    # cy_data = json_graph.cytoscape_data(nx.DiGraph(network_data))
-    data = []
+
     # return the Cytoscape-compatible JSON data
 
-    elements = (
-        cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
-    )
-    xdelements = (
-        cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
-    )
+    # LEGACY TEST CODE
+    # elements = (
+    #     cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
+    # )
+    # xdelements = (
+    #     cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
+    # )
     test_data = convert_networkx_to_cytoscape(graph)
-    xdgraph = convert_cytoscape_to_networkx(test_data)
+    # test_graph = convert_cytoscape_to_networkx(test_data)
     elements = test_data
     return elements
 
@@ -845,7 +890,11 @@ def update_output(contents, filename, elements):
         State("graph-cytoscape", "elements"),
     ],
 )
-def rebind_new_edge(source, target, elements):
+def rebind_new_edge(
+    source: Optional[GraphElement],
+    target: Optional[GraphElement],
+    elements: GraphElements,
+) -> GraphElements:
     if source is None or target is None:
         return elements
     new_edge = {
@@ -855,7 +904,7 @@ def rebind_new_edge(source, target, elements):
     return elements
 
 
-def convert_networkx_to_cytoscape(graph: nx.Graph):
+def convert_networkx_to_cytoscape(graph: Graph) -> GraphElements:
     x_idx = 0
     y_idx = 1
     scaling_factor = 500
@@ -903,7 +952,7 @@ def convert_networkx_to_cytoscape(graph: nx.Graph):
     return cyto_nodes + cyto_edges
 
 
-def convert_cytoscape_to_networkx(elements):
+def convert_cytoscape_to_networkx(elements: GraphElements) -> Graph:
     # Create an empty NetworkX graph
     nx_graph = nx.Graph()
 
@@ -925,7 +974,7 @@ def convert_cytoscape_to_networkx(elements):
     return nx_graph
 
 
-def convert_cytoscape_to_yaml_dict(elements):
+def convert_cytoscape_to_yaml_dict(elements: GraphElements) -> dict:
     # temporary - now only converting to non directed graph settings
     nodes = {}
     edges = []
@@ -950,20 +999,19 @@ def convert_cytoscape_to_yaml_dict(elements):
     return yaml_dict
 
 
-def create_node_attributes(node):
+def create_node_attributes(node: GraphElement) -> tuple[str, dict]:
     node_id = node["data"]["id"]
-    node_attrs = {
-        key: value for key, value in node["data"][add_attrs].items()
-        }
+    node_attrs = {key: value for key, value in node["data"][add_attrs].items()}
     node_attrs["position"] = node["position"]
     return node_id, node_attrs
 
-def is_node(element):
+
+def is_node(element: GraphElement) -> bool:
     return "source" not in element["data"] and "target" not in element["data"]
 
 
-def convert_edge_to_yaml_dict(element):
-    result = {}
+def convert_edge_to_yaml_dict(element: GraphElement) -> dict:
+    result = dict()
     source_id = element["data"]["source"]
     target_id = element["data"]["target"]
     edge_attrs = {
@@ -985,7 +1033,9 @@ def convert_edge_to_yaml_dict(element):
         State("graph-cytoscape", "selectedEdgeData"),
     ],
 )
-def test_graph(n, elements, node_data, edge_data):
+def test_graph(
+    n: Optional[int], elements: GraphElements, node_data: list, edge_data: list
+) -> str:
     if n:
         print(elements)
         print("\n")
@@ -998,12 +1048,9 @@ def test_graph(n, elements, node_data, edge_data):
 
 @app.callback(
     Output("graph-cytoscape", "elements"),
-    [
-        Input("new-graph-button", "n_clicks"),
-        State("graph-cytoscape", "elements")
-    ]
+    [Input("new-graph-button", "n_clicks"), State("graph-cytoscape", "elements")],
 )
-def new_graph(n, elements):
+def new_graph(n: Optional[int], elements: GraphElements) -> GraphElements:
     if n is not None and n > 0:
         id_generator.reset()
         return []
@@ -1014,7 +1061,7 @@ def new_graph(n, elements):
     Output("position_click", "children"),
     Input("graph-cytoscape", "tapData"),
 )
-def test_click(node_data):
+def test_click(node_data: dict) -> str:
     print("\n")
     print(node_data)
     return "Pozice kliknuti"
@@ -1027,7 +1074,7 @@ def test_click(node_data):
         State("graph-cytoscape", "elements"),
     ],
 )
-def add_node(pos, elements):
+def add_node(pos: Optional[dict], elements: GraphElements) -> GraphElements:
     if pos is None:
         return elements
     node_id = id_generator.generate_id()
@@ -1046,7 +1093,7 @@ def add_node(pos, elements):
         State("graph-cytoscape", "elements"),
     ],
 )
-def delete_node(node, elements):
+def delete_node(node: Optional[GraphElement], elements: GraphElements) -> GraphElements:
     if node is None:
         return elements
     node_id = node["data"]["id"]
@@ -1062,7 +1109,7 @@ def delete_node(node, elements):
     return elements
 
 
-def is_removable_edge(edge, removable_edges):
+def is_removable_edge(edge: GraphElement, removable_edges: GraphElements) -> bool:
     for removable_edge in removable_edges:
         if removable_edge == edge:
             return True
@@ -1076,7 +1123,7 @@ def is_removable_edge(edge, removable_edges):
         State("graph-cytoscape", "elements"),
     ],
 )
-def delete_edge(edge, elements):
+def delete_edge(edge: Optional[GraphElement], elements: GraphElements) -> GraphElements:
     if edge is None:
         return elements
     source_id = edge["sourceData"]["id"]
