@@ -16,7 +16,7 @@ def office_building(
         Hall Attribute - hall_att: Attributes of Hall nodes
 
     Returns:
-        return_type: Description of return value
+        Graph: The generated networkx graph
     """
     office_attributes = dict(
         value=100, attack_len=112, blindness=0.0, memory=1, target=True

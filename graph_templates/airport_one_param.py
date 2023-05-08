@@ -12,7 +12,7 @@ def airport_one_param(num_halls: int, rnd_seed: int=0, rnd_values: bool=False) -
         Random values - rnd_values: Toggle random values
 
     Returns:
-        Graph: Description of return value
+        Graph: The generated networkx graph
     """
     # 3-terminal airport with 'num_halls' halls, at least one in each terminal
     if num_halls < 3:

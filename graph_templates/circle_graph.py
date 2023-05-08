@@ -9,7 +9,7 @@ def circle_graph(num_nodes: int, node_att: Optional[dict]=None) -> Graph:
         Node attributes - node_att: Dictionary of node attributes
 
     Returns:
-        return_type: Description of return value
+        Graph: The generated networkx graph
     """
     node_attributes = dict(value=100, attack_len=num_nodes, blindness=0.0, memory=1, target=True)
     node_attributes.update(node_att or {})
