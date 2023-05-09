@@ -489,7 +489,7 @@ def create_attribute_input_fields(
             common_attr,
             placeholder="Select Attribute to Remove",
             id="remove-attribute-dropdown",
-            className="w-100 mt-2 mb-2",
+            className="w-100 mt-2 mb-1",
         )
     )
     sidebar_children.append(
@@ -497,7 +497,7 @@ def create_attribute_input_fields(
             "Remove Attribute",
             id="remove-attribute-button",
             disabled=True,
-            class_name="w-100 mt-2 mb-2",
+            class_name="w-100 mt-1 mb-2",
             color="danger",
         )
     )
@@ -506,19 +506,19 @@ def create_attribute_input_fields(
             ["Number", "Boolean", "Text", "Dictionary"],
             placeholder="Select Attribute Value Type",
             id="attribute-type-dropdown",
-            className="mt-2 mb-2",
+            className="mt-2 mb-1",
         )
     )
     sidebar_children.append(
-        dbc.Input(id="add-attribute-name", type="text", placeholder="Attribute Name")
+        dbc.Input(id="add-attribute-name", type="text", placeholder="Attribute Name", class_name="mt-1 mb-1")
     )
-    sidebar_children.append(html.Div(id="add-attribute-value-container"))
+    sidebar_children.append(html.Div(id="add-attribute-value-container", className="mt-1 mb-1"))
     sidebar_children.append(
         dbc.Button(
             "Add Attribute",
             id="add-attribute-button",
             disabled=True,
-            class_name="w-100 mt-2 mb-2",
+            class_name="w-100 mt-1 mb-1",
             color="success",
         )
     )
