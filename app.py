@@ -116,23 +116,22 @@ class Selected_items:
         return self._selected_elements_idxs
 
 
-original_path = sys.path
 # get the absolute path of the current directory
-current_dir = os.path.abspath(os.path.dirname(__file__))
-folder_name = "graph_templates"
+CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
+FOLDER_NAME = "graph_templates"
 # join the current directory with the folder name
-directory = os.path.join(current_dir, folder_name)
-sys.path.append(directory)
-function_dict = {}
+DIRECTORY = os.path.join(CURRENT_DIR, FOLDER_NAME)
+sys.path.append(DIRECTORY)
+FUNCTION_DICT = {}
 selected_items = Selected_items()
 id_generator = Id_generator()
 
-for filename in os.listdir(directory):
-    if os.path.isfile(os.path.join(directory, filename)) and filename.endswith(".py"):
+for filename in os.listdir(DIRECTORY):
+    if os.path.isfile(os.path.join(DIRECTORY, filename)) and filename.endswith(".py"):
         module_name = filename[:-3]  # remove the .py extension
         module = importlib.import_module(module_name)
         function = getattr(module, module_name)
-        function_dict[module_name] = function
+        FUNCTION_DICT[module_name] = function
 
 
 def dropdown_functions(function_dict: dict[str, GraphFunction]) -> list[dict[str, str]]:
@@ -185,60 +184,103 @@ app = DashProxy(
     suppress_callback_exceptions=True,
 )
 
-add_attrs = "additional_attributes"
-input_stylesheet = {
+ADD_ATTRS = "additional_attributes"
+INPUT_STYLESHEET = {
     "display": "flex",
     "flex-direction": "column",
     "align-items": "center",
 }
 
-graph_templates = html.Div(
+GRAPH_TEMPLATES = html.Div(
     [
         dcc.Dropdown(
-            options=dropdown_functions(function_dict),
+            options=dropdown_functions(FUNCTION_DICT),
             id="graph_layout_dropdown",
             value=None,
         ),
-        html.Div(id="input_fields", style=input_stylesheet),
+        html.Div(id="input_fields", style=INPUT_STYLESHEET),
     ],
     id="modal_html_body",
 )
 
-sidebar_style = {
+ATTRIBUTE_SIDEBAR_STYLE = {
     "position": "fixed",
     "top": 0,
     "right": 0,
     "bottom": 0,
-    "width": "16rem",
+    "width": "20rem",
     "padding": "4rem 1rem 2rem",
     "background-color": "#f8f9fa",
 }
 
-content_style = {
+CONTROLS_SIDEBAR_STYLE = {
+    # "position": "fixed",
+    # "top": 0,
+    # "right": 0,
+    # "bottom": 0,
+    "display": "flex",
+    "flex-direction": "column",
+    "width": "250px",
+    "padding": "2rem",
+    "background-color": "gray",
+    "flex-shrink": 0,
+}
+
+CONTENT_STYLE = {
     "margin-left": "18rem",
     "margin-right": "2rem",
     "padding": "2rem 1rem",
 }
 
-sidebar_container = html.Div(
+ROOT_DIV_STYLE = {"display": "flex", "outline": None, "height": "100vh"}
+
+ATTRIBUTE_SIDEBAR_CONTAINER = html.Div(
     children=[],
     id="sidebar_container",
 )
-
-graphxdd = nx.Graph()
 
 # test_elements2 = [{"data": {"id": "center", "label": "center", "add_data": False}}]
 
 app.layout = html.Div(
     id="app-window",
     children=[
-        daq.BooleanSwitch(
-            on=False, id="orientation-graph-switcher", label="Undirected"
+        html.Div(
+            children=[
+                daq.BooleanSwitch(
+                    on=False,
+                    id="orientation-graph-switcher",
+                    label="Undirected",
+                    className="mb-2",
+                ),
+                dbc.Button("New Graph", id="new-graph-button", class_name="mb-2"),
+                dcc.Upload(
+                    id="upload-graph",
+                    children=dbc.Button("Upload Graph", class_name="mb-2 w-100"),
+                ),
+                dcc.Download(id="save-graph"),
+                dbc.Button("Download Graph", id="save-graph-image", class_name="mb-2"),
+                dbc.Button("Graph Template Functions", id="open", class_name="mb-2"),
+                dbc.Modal(
+                    [
+                        dbc.ModalHeader("Graph Templates"),
+                        dbc.ModalBody(children=GRAPH_TEMPLATES),
+                        dbc.ModalFooter(
+                            dbc.Button(
+                                "Generate Graph from Template",
+                                id="graph_generate_button",
+                                className="ml-auto",
+                            )
+                        ),
+                    ],
+                    id="modal",
+                ),
+            ],
+            style=CONTROLS_SIDEBAR_STYLE,
         ),
         cyto.Cytoscape(
             id="graph-cytoscape",
             elements=[],
-            style={"width": "100%", "height": "700px"},
+            style={"width": "100%", "height": "100%", "flex": 1},
             stylesheet=[
                 {
                     "selector": "edge",
@@ -258,32 +300,13 @@ app.layout = html.Div(
             autoRefreshLayout=True,
             boxSelectionEnabled=True,
         ),
-        html.Button("New Graph", id="new-graph-button"),
-        dcc.Upload(id="upload-graph", children=html.Button("Upload Graph")),
-        dcc.Download(id="save-graph"),
-        html.Button("Download Graph", id="save-graph-image"),
-        dbc.Button("Open modal", id="open"),
-        dbc.Modal(
-            [
-                dbc.ModalHeader("Graph Templates"),
-                dbc.ModalBody(children=graph_templates),
-                dbc.ModalFooter(
-                    dbc.Button(
-                        "Generate Graph from Template",
-                        id="graph_generate_button",
-                        className="ml-auto",
-                    )
-                ),
-            ],
-            id="modal",
-        ),
-        html.Button("Debug Button", id="main-debug-button"),
-        html.Div(id="output-data-upload"),
-        html.Div(id="position_click"),
-        sidebar_container,
+        # html.Button("Debug Button", id="main-debug-button"),
+        # html.Div(id="output-data-upload"),
+        # html.Div(id="position_click"),
+        ATTRIBUTE_SIDEBAR_CONTAINER,
     ],
     tabIndex="0",
-    style={"outline": None},
+    style=ROOT_DIV_STYLE,
 )
 
 
@@ -295,7 +318,7 @@ def handle_yaml_graph(networkx_data: dict) -> GraphOrNone:
     if networkx_data.get("loader") == "hardcodedxx":
         # different handling
         return networkx_data
-    loader_function = function_dict[networkx_data["loader"]]
+    loader_function = FUNCTION_DICT[networkx_data["loader"]]
     print(inspect.signature(loader_function).parameters)
     print(networkx_data["loader_params"])
     graph = call_graph_function_with_params(
@@ -332,7 +355,7 @@ def create_input_fields(selected_option: str) -> list[InputComponent]:
     input_fields: list = []
     if selected_option is None:
         return input_fields
-    selected_function = function_dict[selected_option]
+    selected_function = FUNCTION_DICT[selected_option]
     doc = inspect.getdoc(selected_function)
     if doc is None:
         return input_fields
@@ -368,7 +391,7 @@ def create_function_parameter_input_field(
         or parameter_type == float
         or parameter_type == Optional[int]
     ):
-        return dcc.Input(
+        return dbc.Input(
             id=parameter_name,
             type="number",
             min=0,
@@ -386,7 +409,7 @@ def create_function_parameter_input_field(
         or parameter_type == Optional[list]
         or parameter_type == list
     ):
-        return dcc.Input(
+        return dbc.Input(
             id=parameter_name,
             type="text",
             required=required,
@@ -420,7 +443,7 @@ def create_attribute_input_fields(
     attributes: list = []
     additional_attrs = []
     for selected_item in selected_nodes_edges:
-        additional_attr = selected_item[add_attrs]
+        additional_attr = selected_item[ADD_ATTRS]
         attributes.append(extract_attribute_names(additional_attr))
         additional_attrs.append(additional_attr)
     common_attr = list(reduce(set.intersection, attributes))  # type: ignore
@@ -434,35 +457,52 @@ def create_attribute_input_fields(
         sidebar_children += create_attribute_input_field(
             additional_attrs, number_of_values, attr
         )
-    sidebar_children.append(html.Button("Confirm Edit", id="confirm-edit-button"))
     sidebar_children.append(
-        html.Button("Add Attribute", id="add-attribute-button", disabled=True)
-    )
-    sidebar_children.append(
-        dcc.Dropdown(
-            ["Number", "Boolean", "Text", "Dictionary"],
-            placeholder="Select Attribute Value Type",
-            id="attribute-type-dropdown",
+        dbc.Button(
+            "Confirm Edit", id="confirm-edit-button", class_name="w-100 mt-2 mb-2"
         )
-    )
-    sidebar_children.append(
-        html.Button("Remove Attribute", id="remove-attribute-button", disabled=True)
     )
     sidebar_children.append(
         dcc.Dropdown(
             common_attr,
             placeholder="Select Attribute to Remove",
             id="remove-attribute-dropdown",
+            className="w-100 mt-2 mb-2",
         )
     )
     sidebar_children.append(
-        dcc.Input(id="add-attribute-name", type="text", placeholder="Attribute Name")
+        dbc.Button(
+            "Remove Attribute",
+            id="remove-attribute-button",
+            disabled=True,
+            class_name="w-100 mt-2 mb-2",
+        )
+    )
+    sidebar_children.append(
+        dcc.Dropdown(
+            ["Number", "Boolean", "Text", "Dictionary"],
+            placeholder="Select Attribute Value Type",
+            id="attribute-type-dropdown",
+            className="mt-2 mb-2",
+        )
+    )
+    sidebar_children.append(
+        dbc.Input(id="add-attribute-name", type="text", placeholder="Attribute Name")
     )
     sidebar_children.append(html.Div(id="add-attribute-value-container"))
+    sidebar_children.append(
+        dbc.Button(
+            "Add Attribute",
+            id="add-attribute-button",
+            disabled=True,
+            class_name="w-100 mt-2 mb-2",
+        )
+    )
+
     sidebar = html.Div(
         id="sidebar_div",
         children=sidebar_children,
-        style=sidebar_style,
+        style=ATTRIBUTE_SIDEBAR_STYLE,
     )
     return sidebar
 
@@ -498,7 +538,12 @@ def create_attribute_input_field(
         input_value = first_dict[key]
         input_fields.append(create_attribute_value_input_field(input_value, key))
         return input_fields
-    input_fields.append(html.Label("Value count: " + str(value_count)))
+    input_fields.append(
+        html.Label(
+            "Value count: " + str(value_count),
+            className="w-50 d-inline-block mt-1 mb-1",
+        )
+    )
     return input_fields
 
 
@@ -507,20 +552,32 @@ def create_attribute_value_input_field(
 ) -> InputComponent:
     dict_id = ""
     if isinstance(input_value, bool):
-        return daq.BooleanSwitch(id="value_" + attr_name, on=input_value)
+        return daq.BooleanSwitch(
+            id="value_" + attr_name,
+            on=input_value,
+            className="w-50 d-inline-block mt-1 mb-1",
+        )
     if isinstance(input_value, str) or isinstance(input_value, dict):
         dict_id = dict_id_addition(input_value)
         input_type = "text"
         input_value = str(input_value)
     else:
         input_type = "number"
-    return dcc.Input(
-        value=input_value, id=dict_id + "value_" + attr_name, type=input_type
+    return dbc.Input(
+        value=input_value,
+        id=dict_id + "value_" + attr_name,
+        type=input_type,
+        class_name="w-50 d-inline-block mt-1 mb-1",
     )
 
 
 def create_attribute_name_input_field(attr_name: str) -> InputComponent:
-    return dcc.Input(value=attr_name, type="text", id="key_" + attr_name)
+    return dbc.Input(
+        value=attr_name,
+        type="text",
+        id="key_" + attr_name,
+        class_name="w-50 d-inline-block mt-1 mb-1",
+    )
 
 
 def dict_id_addition(value: Union[str, dict]) -> str:
@@ -560,11 +617,11 @@ def set_attribute_value_input_type(
             id="add-attribute-value", on=False, label="Attribute Value"
         )
     elif dropdown_value == "Number":
-        input_field = dcc.Input(
+        input_field = dbc.Input(
             id="add-attribute-value", type="number", placeholder="Attribute Value"
         )
     else:
-        input_field = dcc.Input(
+        input_field = dbc.Input(
             id="add-attribute-value", type="text", placeholder="Attribute Value"
         )
     return input_field, disabled
@@ -622,13 +679,13 @@ def confirm_button_click(
         or sidebar_children[0]["props"]["id"] == "confirm-edit-button"
     ):
         return elements, dropdown_options
-    start_idx = 0
+    ATTRIBUTE_INPUT_FIELDS_START_IDX = 0
     elements_idxs = selected_items.get_elements_idxs()
     common_attrs = selected_items.get_attrs()
     new_common_attrs = common_attrs.copy()
     for element_idx in elements_idxs:
         update_element_attributes_sidebar(
-            start_idx,
+            ATTRIBUTE_INPUT_FIELDS_START_IDX,
             sidebar_children,
             element_idx,
             elements,
@@ -647,6 +704,7 @@ def update_element_attributes_sidebar(
     common_attrs: list,
     new_common_attrs: list,
 ) -> None:
+    # iterating through attribute input fields
     for name_input_idx in range(start_idx, len(sidebar_children), 2):
         if is_confirm_edit_button(sidebar_children, name_input_idx):
             break
@@ -657,9 +715,9 @@ def update_element_attributes_sidebar(
         update_element_value_sidebar(
             sidebar_children, value_input_idx, elements, element_idx, old_name
         )
-        elements[element_idx]["data"][add_attrs][new_name] = elements[element_idx][
+        elements[element_idx]["data"][ADD_ATTRS][new_name] = elements[element_idx][
             "data"
-        ][add_attrs].pop(old_name)
+        ][ADD_ATTRS].pop(old_name)
         new_common_attrs[common_attr_idx] = new_name
 
 
@@ -673,7 +731,7 @@ def update_element_value_sidebar(
     if sidebar_children[value_input_idx]["type"] == "Label":
         return
     value = extract_value_from_children(sidebar_children, value_input_idx)
-    elements[element_idx]["data"][add_attrs][attr_name] = value
+    elements[element_idx]["data"][ADD_ATTRS][attr_name] = value
 
 
 def is_confirm_edit_button(
@@ -740,12 +798,15 @@ def add_button_click(
         or len(attr_val_container_children) == 0
     ):
         return elements, sidebar_children
+    REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM = 1
+    NEW_ATTRIBUTE_FIELD_NAME_OFFSET = 4
+    ADD_ATTRIBUTE_BUTTON_OFFSET = 6
     new_attribute_value = extract_value_from_children(
         attr_val_container_children, dropdown_value=type_dropdown_value
     )
     elements_idxs = selected_items.get_elements_idxs()
     for element_idx in elements_idxs:
-        elements[element_idx]["data"][add_attrs][
+        elements[element_idx]["data"][ADD_ATTRS][
             new_attribute_name
         ] = new_attribute_value
     common_attrs = selected_items.get_attrs()
@@ -756,9 +817,15 @@ def add_button_click(
     for i in range(len(sidebar_children)):
         if is_confirm_edit_button(sidebar_children, i):
             insert_idx = i
-    sidebar_children[insert_idx + 4]["props"]["options"] = dropdown_options
-    sidebar_children[len(sidebar_children) - 2]["props"]["value"] = ""
-    sidebar_children[insert_idx + 1]["props"]["disabled"] = True
+    sidebar_children[insert_idx + REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM]["props"][
+        "options"
+    ] = dropdown_options
+    sidebar_children[insert_idx + NEW_ATTRIBUTE_FIELD_NAME_OFFSET]["props"][
+        "value"
+    ] = ""
+    sidebar_children[insert_idx + ADD_ATTRIBUTE_BUTTON_OFFSET]["props"][
+        "disabled"
+    ] = True
     sidebar_children.insert(
         insert_idx,
         create_attribute_value_input_field(new_attribute_value, new_attribute_name),
@@ -791,26 +858,34 @@ def remove_button_click(
         return elements, sidebar_children
     elements_idxs = selected_items.get_elements_idxs()
     for element_idx in elements_idxs:
-        elements[element_idx]["data"][add_attrs].pop(remove_value)
+        elements[element_idx]["data"][ADD_ATTRS].pop(remove_value)
     common_attrs = selected_items.get_attrs()
     remove_options.remove(remove_value)
-    first_input_idx = -1
+    first_input_set = False
     for i in range(len(sidebar_children)):
-        if sidebar_children[i]["type"] == "Input" and first_input_idx == -1:
-            first_input_idx = i
+        if sidebar_children[i]["type"] == "Input" and not first_input_set:
+            FIRST_ATTR_INPUT_IDX = i
+            first_input_set = True
         if is_confirm_edit_button(sidebar_children, i):
-            confirm_idx = i
+            CONFIRM_IDX = i
             break
-    remove_dropdown_idx = confirm_idx + 4
-    sidebar_children[remove_dropdown_idx]["props"]["options"] = remove_options
-    sidebar_children[remove_dropdown_idx]["props"]["value"] = ""
-    sidebar_children[confirm_idx + 3]["props"]["disabled"] = True
+    REMOVE_DROPDOWN_OFFSET = 1
+    REMOVE_DROPDOWN_IDX = CONFIRM_IDX + REMOVE_DROPDOWN_OFFSET
+    REMOVE_BUTTON_OFFSET = 2
+    REMOVED_ATTRIBUTE_VALUE_OFFSET_FROM_NAME = 1
+    sidebar_children[REMOVE_DROPDOWN_IDX]["props"]["options"] = remove_options
+    sidebar_children[REMOVE_DROPDOWN_IDX]["props"]["value"] = ""
+    sidebar_children[CONFIRM_IDX + REMOVE_BUTTON_OFFSET]["props"]["disabled"] = True
     for i in range(len(common_attrs)):
         if common_attrs[i] == remove_value:
-            rem_attr_idx = i
+            ATTRIBUTE_NAME_TO_BE_DELETED_IDX = i
             break
-    sidebar_children.pop(first_input_idx + 2 * rem_attr_idx + 1)
-    sidebar_children.pop(first_input_idx + 2 * rem_attr_idx)
+    sidebar_children.pop(
+        FIRST_ATTR_INPUT_IDX
+        + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX
+        + REMOVED_ATTRIBUTE_VALUE_OFFSET_FROM_NAME
+    )
+    sidebar_children.pop(FIRST_ATTR_INPUT_IDX + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX)
     common_attrs.remove(remove_value)
     selected_items.set_attrs(common_attrs)
     return elements, sidebar_children
@@ -836,7 +911,6 @@ def button_click(
     n_clicks: int,
     value: str,
     html_input_children: list[InputComponent],
-    directed: bool,
     stylesheet: list[dict],
 ) -> tuple[GraphElements, bool, bool, str, list[dict]]:
     print(html_input_children)
@@ -848,7 +922,7 @@ def button_click(
             continue
         param_name, param_value = handle_input_dict(child)
         param_dict[param_name] = param_value
-    graph = call_graph_function_with_params(function_dict[value], param_dict)
+    graph = call_graph_function_with_params(FUNCTION_DICT[value], param_dict)
     cytoscape_elements, directed = convert_networkx_to_cytoscape(graph)
     label, stylesheet = graph_orientation_switcher(directed, stylesheet)
     return cytoscape_elements, False, directed, label, stylesheet
@@ -961,7 +1035,7 @@ def rebind_new_edge(
     ):
         return elements
     new_edge = {
-        "data": {"source": source["id"], "target": target["id"], add_attrs: dict()}
+        "data": {"source": source["id"], "target": target["id"], ADD_ATTRS: dict()}
     }
     elements.append(new_edge)
     return elements
@@ -1017,7 +1091,7 @@ def convert_networkx_to_cytoscape(graph: Graph) -> tuple[GraphElements, bool]:
 
         # Create a dictionary representing the Cytoscape node with the modified attributes
         cyto_node = {
-            "data": {"id": str(node), "label": str(node), add_attrs: node_attrs},
+            "data": {"id": str(node), "label": str(node), ADD_ATTRS: node_attrs},
             "position": {
                 "x": position_x,
                 "y": position_y,
@@ -1036,7 +1110,7 @@ def convert_networkx_to_cytoscape(graph: Graph) -> tuple[GraphElements, bool]:
             "data": {
                 "source": str(edge[0]),
                 "target": str(edge[1]),
-                add_attrs: edge_attrs,
+                ADD_ATTRS: edge_attrs,
             }
         }
 
@@ -1061,7 +1135,7 @@ def convert_cytoscape_to_networkx(elements: GraphElements) -> Graph:
             source_id = element["data"]["source"]
             target_id = element["data"]["target"]
             edge_attrs = {
-                key: value for key, value in element["data"][add_attrs].items()
+                key: value for key, value in element["data"][ADD_ATTRS].items()
             }
             nx_graph.add_edge(source_id, target_id, **edge_attrs)
 
@@ -1095,7 +1169,7 @@ def convert_cytoscape_to_yaml_dict(elements: GraphElements, directed: bool) -> d
 
 def create_node_attributes(node: GraphElement) -> tuple[str, dict]:
     node_id = node["data"]["id"]
-    node_attrs = {key: value for key, value in node["data"][add_attrs].items()}
+    node_attrs = {key: value for key, value in node["data"][ADD_ATTRS].items()}
     node_attrs["position"] = node["position"]
     return node_id, node_attrs
 
@@ -1110,7 +1184,7 @@ def convert_edge_to_yaml_dict(element: GraphElement) -> dict:
     target_id = element["data"]["target"]
     edge_attrs = {
         key: value
-        for key, value in element["data"][add_attrs].items()
+        for key, value in element["data"][ADD_ATTRS].items()
         if key != "nodes"
     }
     result["nodes"] = [source_id, target_id]
@@ -1244,7 +1318,7 @@ def add_node(pos: Optional[dict], elements: GraphElements) -> GraphElements:
         return elements
     node_id = id_generator.generate_id()
     new_node = {
-        "data": {"id": node_id, "label": node_id, add_attrs: dict()},
+        "data": {"id": node_id, "label": node_id, ADD_ATTRS: dict()},
         "position": {"x": pos["x"], "y": pos["y"]},
     }
     elements.append(new_node)
