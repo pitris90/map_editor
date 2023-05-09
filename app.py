@@ -452,6 +452,18 @@ def create_attribute_input_fields(
     selected_items.set_nodes(selected_nodes)
     selected_items.set_edges(selected_edges)
     selected_items.generate_selected_elements_idxs(elements)
+    sidebar_children.append(html.H4("Graph Element's Properties Editor", id="graph_prop_editor_heading"))
+    if len(selected_nodes) == 1 and len(selected_edges) == 0:
+        sidebar_children.append(html.H5("Node's Label", id="node_label_field_heading"))
+        sidebar_children.append(
+            dbc.Input(
+                value=selected_nodes[0]["label"],
+                type="text",
+                id="node_label_field",
+                class_name="w-100 d-inline-block mt-1 mb-4",
+            )
+        )
+    sidebar_children.append(html.H5("Element's Attributes", id="elements_prop_fields_heading"))
     for attr in common_attr:
         number_of_values = count_unique_values(additional_attrs, attr)
         sidebar_children += create_attribute_input_field(
@@ -459,7 +471,7 @@ def create_attribute_input_fields(
         )
     sidebar_children.append(
         dbc.Button(
-            "Confirm Edit", id="confirm-edit-button", class_name="w-100 mt-2 mb-2"
+            "Confirm Edit", id="confirm-edit-button", class_name="w-100 mt-2 mb-2", color="info"
         )
     )
     sidebar_children.append(
@@ -476,6 +488,7 @@ def create_attribute_input_fields(
             id="remove-attribute-button",
             disabled=True,
             class_name="w-100 mt-2 mb-2",
+            color="danger"
         )
     )
     sidebar_children.append(
@@ -496,6 +509,7 @@ def create_attribute_input_fields(
             id="add-attribute-button",
             disabled=True,
             class_name="w-100 mt-2 mb-2",
+            color="success"
         )
     )
 
@@ -679,9 +693,14 @@ def confirm_button_click(
         or sidebar_children[0]["props"]["id"] == "confirm-edit-button"
     ):
         return elements, dropdown_options
-    ATTRIBUTE_INPUT_FIELDS_START_IDX = 0
+    ATTRIBUTE_INPUT_FIELDS_START_IDX = get_attribute_input_field_start(sidebar_children)
     elements_idxs = selected_items.get_elements_idxs()
     common_attrs = selected_items.get_attrs()
+    selected_nodes = selected_items.get_nodes()
+    selected_edges = selected_items.get_edges()
+    if len(selected_nodes) == 1 and len(selected_edges) == 0:
+        NODE_LABEL_FIELD_IDX = 2
+        elements[elements_idxs[0]]["data"]["label"] = sidebar_children[NODE_LABEL_FIELD_IDX]["props"]["value"]
     new_common_attrs = common_attrs.copy()
     for element_idx in elements_idxs:
         update_element_attributes_sidebar(
@@ -694,6 +713,13 @@ def confirm_button_click(
         )
     selected_items.set_attrs(new_common_attrs)
     return elements, new_common_attrs
+
+
+def get_attribute_input_field_start(sidebar_children: list[InputComponent]) -> int:
+    for element_idx in range(len(sidebar_children)):
+        if sidebar_children[element_idx]["props"]["id"] == "elements_prop_fields_heading":
+            return element_idx + 1
+    return -1
 
 
 def update_element_attributes_sidebar(
@@ -861,11 +887,8 @@ def remove_button_click(
         elements[element_idx]["data"][ADD_ATTRS].pop(remove_value)
     common_attrs = selected_items.get_attrs()
     remove_options.remove(remove_value)
-    first_input_set = False
+    FIRST_ATTR_INPUT_IDX = get_attribute_input_field_start(sidebar_children)
     for i in range(len(sidebar_children)):
-        if sidebar_children[i]["type"] == "Input" and not first_input_set:
-            FIRST_ATTR_INPUT_IDX = i
-            first_input_set = True
         if is_confirm_edit_button(sidebar_children, i):
             CONFIRM_IDX = i
             break
