@@ -1125,11 +1125,16 @@ def convert_networkx_to_cytoscape(graph: Graph) -> tuple[GraphElements, bool]:
             position_x = node_attrs["position"]["x"]
             position_y = node_attrs["position"]["y"]
             node_attrs.pop("position")
+        if node_attrs.get("label", True) == True:
+            label = str(node)
+        else:
+            label = node_attrs["label"]
+            node_attrs.pop("label")
         id_generator.increment_id()
 
         # Create a dictionary representing the Cytoscape node with the modified attributes
         cyto_node = {
-            "data": {"id": str(node), "label": str(node), ADD_ATTRS: node_attrs},
+            "data": {"id": str(node), "label": label, ADD_ATTRS: node_attrs},
             "position": {
                 "x": position_x,
                 "y": position_y,
@@ -1228,6 +1233,7 @@ def create_node_attributes(
     node_attrs["position"] = dict()
     node_attrs["position"]["x"] = node["position"]["x"] + x_offset
     node_attrs["position"]["y"] = node["position"]["y"] + y_offset
+    node_attrs["label"] = node["data"]["label"]
     return node_id, node_attrs
 
 
