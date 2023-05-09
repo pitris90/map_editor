@@ -296,7 +296,10 @@ app.layout = html.Div(
                     },
                 },
             ],
-            layout={"name": "preset"},
+            layout={
+                "name": "preset"
+                # "boundingBox": {"x1": 0, "y1": 0, "x2": 4294967295, "y2": 4294967295},
+            },
             autoRefreshLayout=True,
             boxSelectionEnabled=True,
         ),
@@ -452,7 +455,9 @@ def create_attribute_input_fields(
     selected_items.set_nodes(selected_nodes)
     selected_items.set_edges(selected_edges)
     selected_items.generate_selected_elements_idxs(elements)
-    sidebar_children.append(html.H4("Graph Element's Properties Editor", id="graph_prop_editor_heading"))
+    sidebar_children.append(
+        html.H4("Graph Element's Properties Editor", id="graph_prop_editor_heading")
+    )
     if len(selected_nodes) == 1 and len(selected_edges) == 0:
         sidebar_children.append(html.H5("Node's Label", id="node_label_field_heading"))
         sidebar_children.append(
@@ -463,7 +468,9 @@ def create_attribute_input_fields(
                 class_name="w-100 d-inline-block mt-1 mb-4",
             )
         )
-    sidebar_children.append(html.H5("Element's Attributes", id="elements_prop_fields_heading"))
+    sidebar_children.append(
+        html.H5("Element's Attributes", id="elements_prop_fields_heading")
+    )
     for attr in common_attr:
         number_of_values = count_unique_values(additional_attrs, attr)
         sidebar_children += create_attribute_input_field(
@@ -471,7 +478,10 @@ def create_attribute_input_fields(
         )
     sidebar_children.append(
         dbc.Button(
-            "Confirm Edit", id="confirm-edit-button", class_name="w-100 mt-2 mb-2", color="info"
+            "Confirm Edit",
+            id="confirm-edit-button",
+            class_name="w-100 mt-2 mb-2",
+            color="info",
         )
     )
     sidebar_children.append(
@@ -488,7 +498,7 @@ def create_attribute_input_fields(
             id="remove-attribute-button",
             disabled=True,
             class_name="w-100 mt-2 mb-2",
-            color="danger"
+            color="danger",
         )
     )
     sidebar_children.append(
@@ -509,7 +519,7 @@ def create_attribute_input_fields(
             id="add-attribute-button",
             disabled=True,
             class_name="w-100 mt-2 mb-2",
-            color="success"
+            color="success",
         )
     )
 
@@ -700,7 +710,9 @@ def confirm_button_click(
     selected_edges = selected_items.get_edges()
     if len(selected_nodes) == 1 and len(selected_edges) == 0:
         NODE_LABEL_FIELD_IDX = 2
-        elements[elements_idxs[0]]["data"]["label"] = sidebar_children[NODE_LABEL_FIELD_IDX]["props"]["value"]
+        elements[elements_idxs[0]]["data"]["label"] = sidebar_children[
+            NODE_LABEL_FIELD_IDX
+        ]["props"]["value"]
     new_common_attrs = common_attrs.copy()
     for element_idx in elements_idxs:
         update_element_attributes_sidebar(
@@ -717,7 +729,10 @@ def confirm_button_click(
 
 def get_attribute_input_field_start(sidebar_children: list[InputComponent]) -> int:
     for element_idx in range(len(sidebar_children)):
-        if sidebar_children[element_idx]["props"]["id"] == "elements_prop_fields_heading":
+        if (
+            sidebar_children[element_idx]["props"]["id"]
+            == "elements_prop_fields_heading"
+        ):
             return element_idx + 1
     return -1
 
@@ -1169,9 +1184,24 @@ def convert_cytoscape_to_yaml_dict(elements: GraphElements, directed: bool) -> d
     # temporary - now only converting to non directed graph settings
     nodes = {}
     edges = []
+    x_offset = 0.0
+    y_offset = 0.0
+    for element in elements:
+        if not is_node(element):
+            continue
+        x_pos = element["position"]["x"]
+        y_pos = element["position"]["y"]
+        if x_pos < x_offset:
+            x_offset = x_pos
+        if y_pos < y_offset:
+            y_offset = y_pos
+
+    x_offset = abs(x_offset)
+    y_offset = abs(y_offset)
+
     for element in elements:
         if is_node(element):
-            node_id, node_attrs = create_node_attributes(element)
+            node_id, node_attrs = create_node_attributes(element, x_offset, y_offset)
             nodes[str(node_id)] = node_attrs
         else:
             edges.append(convert_edge_to_yaml_dict(element))
@@ -1190,10 +1220,14 @@ def convert_cytoscape_to_yaml_dict(elements: GraphElements, directed: bool) -> d
     return yaml_dict
 
 
-def create_node_attributes(node: GraphElement) -> tuple[str, dict]:
+def create_node_attributes(
+    node: GraphElement, x_offset: float = 0.0, y_offset: float = 0.0
+) -> tuple[str, dict]:
     node_id = node["data"]["id"]
     node_attrs = {key: value for key, value in node["data"][ADD_ATTRS].items()}
-    node_attrs["position"] = node["position"]
+    node_attrs["position"] = dict()
+    node_attrs["position"]["x"] = node["position"]["x"] + x_offset
+    node_attrs["position"]["y"] = node["position"]["y"] + y_offset
     return node_id, node_attrs
 
 
@@ -1401,4 +1435,4 @@ def delete_edge(edge: Optional[GraphElement], elements: GraphElements) -> GraphE
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
