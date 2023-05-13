@@ -246,12 +246,6 @@ app.layout = html.Div(
     children=[
         html.Div(
             children=[
-                daq.BooleanSwitch(
-                    on=False,
-                    id="orientation-graph-switcher",
-                    label="Undirected",
-                    className="mb-2",
-                ),
                 dbc.Button("New Graph", id="new-graph-button", class_name="mb-2"),
                 dcc.Upload(
                     id="upload-graph",
@@ -273,6 +267,12 @@ app.layout = html.Div(
                         ),
                     ],
                     id="modal",
+                ),
+                daq.BooleanSwitch(
+                    on=False,
+                    id="orientation-graph-switcher",
+                    label="Undirected",
+                    className="mb-2",
                 ),
             ],
             style=CONTROLS_SIDEBAR_STYLE,
