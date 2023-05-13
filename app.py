@@ -510,9 +510,16 @@ def create_attribute_input_fields(
         )
     )
     sidebar_children.append(
-        dbc.Input(id="add-attribute-name", type="text", placeholder="Attribute Name", class_name="mt-1 mb-1")
+        dbc.Input(
+            id="add-attribute-name",
+            type="text",
+            placeholder="Attribute Name",
+            class_name="mt-1 mb-1",
+        )
     )
-    sidebar_children.append(html.Div(id="add-attribute-value-container", className="mt-1 mb-1"))
+    sidebar_children.append(
+        html.Div(id="add-attribute-value-container", className="mt-1 mb-1")
+    )
     sidebar_children.append(
         dbc.Button(
             "Add Attribute",
