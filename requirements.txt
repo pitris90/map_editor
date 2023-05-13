@@ -1,5 +1,5 @@
 dash
-dash-cytoscape
+./dash_cytoscape-0.3.1.tar
 dash-bootstrap-components
 dash-extensions
 dash-daq
