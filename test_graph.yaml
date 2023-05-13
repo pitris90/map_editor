@@ -1,5 +1,0 @@
-graph_params:
-  loader: airport_one_param
-  loader_params:
-    num_halls: 3 # 1, 2, 3, 5, 7, 10, 13, 17, 21, 25
-    rnd_values: false # true/false
