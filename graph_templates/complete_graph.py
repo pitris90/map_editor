@@ -1,4 +1,4 @@
-import networkx
+import networkx # type: ignore
 from itertools import combinations
 from typing import Optional
 

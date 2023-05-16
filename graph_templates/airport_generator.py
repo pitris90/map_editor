@@ -1,4 +1,4 @@
-import networkx
+import networkx # type: ignore
 
 import random
 from typing import Optional
@@ -6,7 +6,7 @@ from typing import Optional
 
 def airport_generator(
     halls_in_legs: list,
-    default_gate_att: Optional[dict],
+    default_gate_att: dict,
     default_hall_att: Optional[dict],
     gates: int = 2,
     rnd_values: bool = False,

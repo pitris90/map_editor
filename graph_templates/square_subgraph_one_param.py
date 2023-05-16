@@ -1,5 +1,5 @@
 from square_subgraph import square_subgraph
-import networkx
+import networkx # type: ignore
 
 from typing import Optional
 

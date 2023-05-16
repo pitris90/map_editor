@@ -1,4 +1,4 @@
-import networkx
+import networkx # type: ignore
 
 from typing import Optional
 
@@ -6,7 +6,7 @@ from typing import Optional
 def airport(
     hall_distances: list,
     gates: list,
-    default_gate_att: Optional[dict],
+    default_gate_att: dict,
     default_hall_att: Optional[dict],
 ) -> networkx.Graph:
     """Airport

@@ -1,7 +1,7 @@
-import networkx
+import networkx # type: ignore
 
 
-def hardcoded(nodes, targets, edges, settings=None):
+def hardcoded(nodes, targets, edges, settings=None): # type: ignore
     nodes = nodes or {}
     targets = targets or {}
     edges = edges or {}

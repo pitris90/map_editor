@@ -1,4 +1,4 @@
-import networkx
+import networkx # type: ignore
 
 from typing import Optional
 
@@ -32,7 +32,7 @@ def diamond(
         n_att = target_attribute.copy()
         n_att["value"] = val
         name = f"n_{idx}_v_{val}"
-        nodes.append((name, n_att))
+        nodes.append((name, n_att)) # type: ignore
         edges.append(("start", name, edge_attribute))
         edges.append((name, "stop", edge_attribute))
     graph = networkx.DiGraph()

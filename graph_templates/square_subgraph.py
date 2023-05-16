@@ -1,5 +1,5 @@
-import networkx
-from graph_helper.distance import distance
+import networkx # type: ignore
+from graph_helper.distance import distance # type: ignore
 
 from itertools import product, combinations
 from typing import Optional

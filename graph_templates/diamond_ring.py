@@ -1,10 +1,10 @@
-import networkx
+import networkx # type: ignore
 
 from typing import Optional
 
 
 def diamond_ring(
-    values: list,
+    values: list[list],
     node_att: Optional[dict] = None,
     target_att: Optional[dict] = None,
     edge_att: Optional[dict] = None,
@@ -39,7 +39,7 @@ def diamond_ring(
             n_att = target_attribute.copy()
             n_att["value"] = val
             name = f"d_{d_idx}_n_{v_idx}_v_{val}"
-            nodes.append((name, n_att))
+            nodes.append((name, n_att)) # type: ignore
             edges.append((start_node, name, edge_attribute))
             edges.append((name, end_node, edge_attribute))
         start_node = end_node

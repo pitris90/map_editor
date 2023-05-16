@@ -1,5 +1,5 @@
-import networkx
-from graph_helper.distance import distance
+import networkx # type: ignore
+from graph_helper.distance import distance # type: ignore
 
 from itertools import product, combinations
 from typing import Optional
@@ -28,7 +28,7 @@ def square_subgraph_periodic_maintenance(
     """
     if num_target_param is not None:
         num_target_groups = [num_target_param * x for x in num_target_groups]
-    depo_att["target"] = True
+    depo_att["target"] = True # type: ignore
     for att in target_att_list:
         att["target"] = True
 
@@ -60,7 +60,7 @@ def square_subgraph_periodic_maintenance(
     random.shuffle(full_list_of_target_att)
 
     nodes = [(depo, depo_att)]
-    nodes += list(zip(chosen_nodes, full_list_of_target_att))
+    nodes += list(zip(chosen_nodes, full_list_of_target_att)) # type: ignore
 
     chosen_nodes.insert(0, depo)
     # compute distances/edges
@@ -71,7 +71,7 @@ def square_subgraph_periodic_maintenance(
     # self-loop for depo
     edges = [(depo, depo, dict(len=10))]
     for edge, dist in zip(combinations(chosen_nodes, 2), edges_dist):
-        edges.append((*edge, dict(len=10 * dist)))
+        edges.append((*edge, dict(len=10 * dist))) # type: ignore
 
     graph = networkx.Graph()
     graph.add_nodes_from(nodes)

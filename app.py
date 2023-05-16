@@ -1,8 +1,5 @@
 import networkx as nx  # type: ignore
 import dash_bootstrap_components as dbc  # type: ignore
-
-# from dash import dcc, html, Dash
-# from dash.dependencies import Input, Output, State
 import dash_cytoscape as cyto  # type: ignore
 import dash_daq as daq  # type: ignore
 from dash_extensions.enrich import (  # type: ignore
@@ -23,7 +20,7 @@ import importlib
 import re
 import ast
 import json
-from typing import Callable, Any, Union, Optional, Tuple, Type
+from typing import Any, Union, Optional, Type
 from type_aliases import (
     Graph,
     GraphFunction,
@@ -158,25 +155,6 @@ def is_function_typed(function: GraphFunction) -> bool:
     return True
 
 
-# proxy_wrapper_map = {
-#     Output("graph-cytoscape", "elements"): lambda proxy: cyto.Cytoscape(
-#         id="graph-cytoscape",
-#         elements=proxy,
-#         style={"width": "100%", "height": "600px"},
-#         layout={"name": "circle"},
-#         autoRefreshLayout=True,
-#     ), Output("modal", "is_open"): lambda proxy: dbc.Modal(
-#             [
-#                 dbc.ModalHeader("Graph Templates"),
-#                 dbc.ModalBody(children=graph_templates),
-#                 dbc.ModalFooter(
-#                     dbc.Button("CLOSE BUTTON", id="close", className="ml-auto")
-#                 ),
-#             ],
-#             id="modal", is_open=proxy
-#         )
-# }
-# app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app = DashProxy(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
@@ -214,10 +192,6 @@ ATTRIBUTE_SIDEBAR_STYLE = {
 }
 
 CONTROLS_SIDEBAR_STYLE = {
-    # "position": "fixed",
-    # "top": 0,
-    # "right": 0,
-    # "bottom": 0,
     "display": "flex",
     "flex-direction": "column",
     "width": "250px",
@@ -238,8 +212,6 @@ ATTRIBUTE_SIDEBAR_CONTAINER = html.Div(
     children=[],
     id="sidebar_container",
 )
-
-# test_elements2 = [{"data": {"id": "center", "label": "center", "add_data": False}}]
 
 app.layout = html.Div(
     id="app-window",
@@ -296,10 +268,7 @@ app.layout = html.Div(
                     },
                 },
             ],
-            layout={
-                "name": "preset"
-                # "boundingBox": {"x1": 0, "y1": 0, "x2": 4294967295, "y2": 4294967295},
-            },
+            layout={"name": "preset"},
             autoRefreshLayout=True,
             boxSelectionEnabled=True,
         ),
@@ -556,7 +525,6 @@ def count_unique_values(values: list[dict], key: str) -> int:
             dict_value = json.dumps(dict_value, sort_keys=True)
         unique_set.add(dict_value)
     return len(unique_set)
-    # return len(set(value[key] for value in values))
 
 
 def create_attribute_input_field(
@@ -1049,9 +1017,6 @@ def update_output(
     # elements = (
     #     cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
     # )
-    # xdelements = (
-    #     cytoscape_graph["elements"]["nodes"] + cytoscape_graph["elements"]["edges"]
-    # )
     elements, directed = convert_networkx_to_cytoscape(graph)
     label, stylesheet = graph_orientation_switcher(directed, stylesheet)
     # test_graph = convert_cytoscape_to_networkx(elements)
@@ -1193,7 +1158,6 @@ def convert_cytoscape_to_networkx(elements: GraphElements) -> Graph:
 
 
 def convert_cytoscape_to_yaml_dict(elements: GraphElements, directed: bool) -> dict:
-    # temporary - now only converting to non directed graph settings
     nodes = {}
     edges = []
     x_offset = 0.0
@@ -1262,6 +1226,7 @@ def convert_edge_to_yaml_dict(element: GraphElement) -> dict:
     return result
 
 
+# TEST CALLBACK FUNCTION
 @app.callback(
     Output("output-data-upload", "children"),
     [
@@ -1339,16 +1304,6 @@ def new_graph(n: Optional[int], elements: GraphElements) -> GraphElements:
         id_generator.reset()
         return []
     return elements
-
-
-@app.callback(
-    Output("position_click", "children"),
-    Input("graph-cytoscape", "tapData"),
-)
-def test_click(node_data: dict) -> str:
-    print("\n")
-    print(node_data)
-    return "Pozice kliknuti"
 
 
 @app.callback(

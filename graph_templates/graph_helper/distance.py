@@ -1,9 +1,15 @@
-from geopy.distance import distance as geopy_distance
+from geopy.distance import distance as geopy_distance  # type: ignore
 
 import math
+from typing import Optional
 
 
-def distance(from_vert, to_vert, taxicab=True, distance_unit=None) -> float:
+def distance(
+    from_vert: tuple,
+    to_vert: tuple,
+    taxicab: bool = True,
+    distance_unit: Optional[str] = None,
+) -> float:
     """Computes distance between two points.
 
     Attributes:
@@ -18,13 +24,16 @@ def distance(from_vert, to_vert, taxicab=True, distance_unit=None) -> float:
         if taxicab:
             return abs(from_vert[0] - to_vert[0]) + abs(from_vert[1] - to_vert[1])
         else:
-            return math.sqrt((from_vert[0] - to_vert[0]) ** 2 + (from_vert[1] - to_vert[1]) ** 2)
+            return math.sqrt(
+                (from_vert[0] - to_vert[0]) ** 2 + (from_vert[1] - to_vert[1]) ** 2
+            )
 
     # GPS, units by ‹distance_unit›
 
     if taxicab:
-        d = geopy_distance(from_vert, (to_vert[0], from_vert[1])) + \
-            geopy_distance(from_vert, (from_vert[0], to_vert[1]))
+        d = geopy_distance(from_vert, (to_vert[0], from_vert[1])) + geopy_distance(
+            from_vert, (from_vert[0], to_vert[1])
+        )
     else:
         # Euclidean distance
         d = geopy_distance(from_vert, to_vert)

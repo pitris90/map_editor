@@ -1,4 +1,4 @@
-import networkx
+import networkx # type: ignore
 from typing import Optional
 from type_aliases import Graph
 
