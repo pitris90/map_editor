@@ -238,7 +238,7 @@ app.layout = html.Div(
                             )
                         ),
                     ],
-                    id="modal",
+                    id="modal_menu_graph_functions",
                 ),
                 daq.BooleanSwitch(
                     on=False,
@@ -319,7 +319,7 @@ def call_graph_function_with_params(
 
 @app.callback(
     Output("input_fields", "children"),
-    [Input("graph_layout_dropdown", "value")],
+    Input("graph_layout_dropdown", "value"),
     prevent_initial_call=True,
 )
 def create_input_fields(selected_option: str) -> list[InputComponent]:
@@ -334,13 +334,17 @@ def create_input_fields(selected_option: str) -> list[InputComponent]:
     pattern = r"\s*([\w\s]+\w)\s*-\s*(\w+)\s*:\s*(.+)"
     parameters = re.findall(pattern, doc, flags=re.MULTILINE)
     for parameter in parameters:
-        input_fields.append(html.Label(parameter[0], className="label"))
+        name, py_name, desc = parameter[0], parameter[1], parameter[2]
+        input_fields.append(
+            html.Label(name, className="label", id="param_label_" + py_name)
+        )
+        input_fields.append(dbc.Tooltip(desc, target="param_label_" + py_name))
         type_annotation = (
-            inspect.signature(selected_function).parameters[parameter[1]].annotation
+            inspect.signature(selected_function).parameters[py_name].annotation
         )
         input_fields.append(
             create_function_parameter_input_field(
-                parameter[1], type_annotation, parameter[2], selected_function
+                py_name, type_annotation, selected_function
             )
         )
     return input_fields
@@ -349,12 +353,11 @@ def create_input_fields(selected_option: str) -> list[InputComponent]:
 def create_function_parameter_input_field(
     parameter_name: str,
     parameter_type: Type,
-    parameter_desc: str,
     function: GraphFunction,
 ) -> InputComponent:
     params = inspect.signature(function).parameters
     required = params[parameter_name].default is inspect.Parameter.empty
-    default = None
+    default = ""
     if not required:
         default = params[parameter_name].default
 
@@ -372,7 +375,7 @@ def create_function_parameter_input_field(
             className="input",
         )
     elif parameter_type == bool:
-        if default is None:
+        if default == "":
             return daq.BooleanSwitch(id=parameter_name, on=False, className="input")
         return daq.BooleanSwitch(id=parameter_name, on=default)
     elif (
@@ -523,6 +526,8 @@ def count_unique_values(values: list[dict], key: str) -> int:
         dict_value = value[key]
         if isinstance(dict_value, dict):
             dict_value = json.dumps(dict_value, sort_keys=True)
+        if isinstance(dict_value, list) or isinstance(dict_value, set):
+            dict_value = str(dict_value)
         unique_set.add(dict_value)
     return len(unique_set)
 
@@ -549,22 +554,27 @@ def create_attribute_input_field(
 def create_attribute_value_input_field(
     input_value: InputValue, attr_name: str
 ) -> InputComponent:
-    dict_id = ""
+    evaluate_id = ""
     if isinstance(input_value, bool):
         return daq.BooleanSwitch(
             id="value_" + attr_name,
             on=input_value,
             className="w-50 d-inline-block mt-1 mb-1",
         )
-    if isinstance(input_value, str) or isinstance(input_value, dict):
-        dict_id = dict_id_addition(input_value)
+    if (
+        isinstance(input_value, str)
+        or isinstance(input_value, dict)
+        or isinstance(input_value, list)
+        or isinstance(input_value, set)
+    ):
+        evaluate_id = evaluate_id_addition(input_value)
         input_type = "text"
         input_value = str(input_value)
     else:
         input_type = "number"
     return dbc.Input(
         value=input_value,
-        id=dict_id + "value_" + attr_name,
+        id=evaluate_id + "value_" + attr_name,
         type=input_type,
         class_name="w-50 d-inline-block mt-1 mb-1",
     )
@@ -579,8 +589,8 @@ def create_attribute_name_input_field(attr_name: str) -> InputComponent:
     )
 
 
-def dict_id_addition(value: Union[str, dict]) -> str:
-    if isinstance(value, dict):
+def evaluate_id_addition(value: Union[str, dict]) -> str:
+    if isinstance(value, dict) or isinstance(value, list) or isinstance(value, set):
         return "dict_"
     return "text_"
 
@@ -765,7 +775,7 @@ def extract_value_from_children(
         if children["type"] == "Input" and (
             children["props"]["id"][:5] == "dict_" or dropdown_value == "Dictionary"
         ):
-            value = json.loads(children["props"]["value"])
+            value = ast.literal_eval(children["props"]["value"])
         elif children["type"] == "Input":
             value = children["props"]["value"]
         else:
@@ -775,7 +785,7 @@ def extract_value_from_children(
             children[value_input_idx]["props"]["id"][:5] == "dict_"
             or dropdown_value == "Dictionary"
         ):
-            value = json.loads(children[value_input_idx]["props"]["value"])
+            value = ast.literal_eval(children[value_input_idx]["props"]["value"])
         elif children[value_input_idx]["type"] == "Input":
             value = children[value_input_idx]["props"]["value"]
         else:
@@ -907,7 +917,7 @@ def remove_button_click(
 @app.callback(
     [
         Output("graph-cytoscape", "elements"),
-        Output("modal", "is_open"),
+        Output("modal_menu_graph_functions", "is_open"),
         Output("orientation-graph-switcher", "on"),
         Output("orientation-graph-switcher", "label"),
         Output("graph-cytoscape", "stylesheet"),
@@ -931,7 +941,7 @@ def button_click(
         return [], False
     param_dict = {}
     for child in html_input_children:
-        if child["type"] == "Label":
+        if child["type"] == "Label" or child["type"] == "Tooltip":
             continue
         param_name, param_value = handle_input_dict(child)
         param_dict[param_name] = param_value
@@ -953,14 +963,12 @@ def handle_input_dict(input_dict: dict) -> tuple[str, InputValue]:
 
 
 @app.callback(
-    Output("modal", "is_open"),
+    Output("modal_menu_graph_functions", "is_open"),
     [Input("open", "n_clicks")],
-    [State("modal", "is_open")],
+    [State("modal_menu_graph_functions", "is_open")],
 )
 def toggle_modal(n1: Optional[int], is_open: bool) -> bool:
-    if n1:
-        return not is_open
-    return is_open
+    return n1 is not None
 
 
 @app.callback(
@@ -1227,35 +1235,35 @@ def convert_edge_to_yaml_dict(element: GraphElement) -> dict:
 
 
 # TEST CALLBACK FUNCTION
-@app.callback(
-    Output("output-data-upload", "children"),
-    [
-        Input("main-debug-button", "n_clicks"),
-        State("graph-cytoscape", "elements"),
-        State("graph-cytoscape", "tapNode"),
-        State("graph-cytoscape", "selectedNodeData"),
-        State("graph-cytoscape", "selectedEdgeData"),
-        State("graph-cytoscape", "stylesheet"),
-        State("graph-cytoscape", "ele_move_pos"),
-    ],
-)
-def test_graph(
-    n: Optional[int],
-    elements: GraphElements,
-    tapNode: Any,
-    node_data: list,
-    edge_data: list,
-    stylesheet: list,
-    new_posiiton: Any,
-) -> str:
-    if n:
-        print(elements)
-        print("\n")
-        print(node_data)
-        print("\n")
-        print(edge_data)
-        return "Klik"
-    return "Neklik"
+# @app.callback(
+#     Output("output-data-upload", "children"),
+#     [
+#         Input("main-debug-button", "n_clicks"),
+#         State("graph-cytoscape", "elements"),
+#         State("graph-cytoscape", "tapNode"),
+#         State("graph-cytoscape", "selectedNodeData"),
+#         State("graph-cytoscape", "selectedEdgeData"),
+#         State("graph-cytoscape", "stylesheet"),
+#         State("graph-cytoscape", "ele_move_pos"),
+#     ],
+# )
+# def test_graph(
+#     n: Optional[int],
+#     elements: GraphElements,
+#     tapNode: Any,
+#     node_data: list,
+#     edge_data: list,
+#     stylesheet: list,
+#     new_posiiton: Any,
+# ) -> str:
+#     if n:
+#         print(elements)
+#         print("\n")
+#         print(node_data)
+#         print("\n")
+#         print(edge_data)
+#         return "Klik"
+#     return "Neklik"
 
 
 @app.callback(
