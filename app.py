@@ -365,6 +365,7 @@ def create_function_parameter_input_field(
         parameter_type == int
         or parameter_type == float
         or parameter_type == Optional[int]
+        or parameter_type == Optional[float]
     ):
         return dbc.Input(
             id=parameter_name,
@@ -383,6 +384,8 @@ def create_function_parameter_input_field(
         or parameter_type == Optional[dict]
         or parameter_type == Optional[list]
         or parameter_type == list
+        or parameter_type == set
+        or parameter_type == Optional[set]
     ):
         return dbc.Input(
             id=parameter_name,
