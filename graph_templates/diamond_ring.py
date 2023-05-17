@@ -4,7 +4,7 @@ from typing import Optional
 
 
 def diamond_ring(
-    values: list[list],
+    values: list,
     node_att: Optional[dict] = None,
     target_att: Optional[dict] = None,
     edge_att: Optional[dict] = None,
