@@ -142,6 +142,24 @@ class Selected_items:
     def get_elements_idxs(self) -> list:
         return self._selected_elements_idxs
 
+    def get_data(self) -> list:
+        return [self._selected_common_attrs, self._selected_elements, self._selected_edges,
+                self._selected_nodes, self._selected_elements_idxs]
+
+    def set_data(self, data: list) -> None:
+        self._selected_common_attrs = data[COMMON_ATTRS]
+        self._selected_elements = data[ELEMENTS]
+        self._selected_edges = data[EDGES]
+        self._selected_nodes = data[NODES]
+        self._selected_elements_idxs = data[ELEMENTS_IDXS]
+
+
+# Constants for indexing selected_items data
+COMMON_ATTRS = 0
+ELEMENTS = 1
+EDGES = 2
+NODES = 3
+ELEMENTS_IDXS = 4
 
 # get the absolute path of the current directory
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -150,7 +168,7 @@ FOLDER_NAME = "graph_templates"
 DIRECTORY = os.path.join(CURRENT_DIR, FOLDER_NAME)
 sys.path.append(DIRECTORY)
 FUNCTION_DICT = {}
-selected_items = Selected_items()
+# selected_items = Selected_items()
 id_generator = Id_generator()
 
 for filename in os.listdir(DIRECTORY):
@@ -306,6 +324,7 @@ app.layout = html.Div(
         # html.Div(id="output-data-upload"),
         # html.Div(id="position_click"),
         ATTRIBUTE_SIDEBAR_CONTAINER,
+        dcc.Store(id="selected-items")
     ],
     tabIndex="0",
     style=ROOT_DIV_STYLE,
@@ -429,7 +448,8 @@ def create_function_parameter_input_field(
 
 
 @app.callback(
-    Output("sidebar_container", "children"),
+    [Output("sidebar_container", "children"), 
+     Output("selected-items", "data")],
     [
         Input("graph-cytoscape", "selectedNodeData"),
         Input("graph-cytoscape", "selectedEdgeData"),
@@ -440,7 +460,7 @@ def create_attribute_input_fields(
     selected_nodes: GraphElements,
     selected_edges: GraphElements,
     elements: GraphElements,
-) -> html.Div:
+) -> list:
     selected_nodes, selected_edges = optional_none_to_empty_list(
         selected_nodes
     ), optional_none_to_empty_list(selected_edges)
@@ -455,6 +475,7 @@ def create_attribute_input_fields(
         attributes.append(extract_attribute_names(additional_attr))
         additional_attrs.append(additional_attr)
     common_attr = list(reduce(set.intersection, attributes))  # type: ignore
+    selected_items = Selected_items()
     selected_items.set_attrs(common_attr)
     selected_items.set_elements(selected_nodes_edges)
     selected_items.set_nodes(selected_nodes)
@@ -540,7 +561,7 @@ def create_attribute_input_fields(
         children=sidebar_children,
         style=ATTRIBUTE_SIDEBAR_STYLE,
     )
-    return sidebar
+    return [sidebar, selected_items.get_data()]
 
 
 def optional_none_to_empty_list(optional_list: Optional[list]) -> list:
@@ -699,12 +720,14 @@ def remove_button_disabler(dropdown_value: Optional[str]) -> bool:
     [
         Output("graph-cytoscape", "elements"),
         Output("remove-attribute-dropdown", "options"),
+        Output("selected-items", "data")
     ],
     [
         Input("confirm-edit-button", "n_clicks"),
         State("sidebar_div", "children"),
         State("graph-cytoscape", "elements"),
         State("remove-attribute-dropdown", "options"),
+        State("selected-items", "data")
     ],
     prevent_initial_call=True,
 )
@@ -713,15 +736,18 @@ def confirm_button_click(
     sidebar_children: list[InputComponent],
     elements: GraphElements,
     dropdown_options: Optional[list],
-) -> tuple[GraphElements, Optional[list]]:
+    data: list
+) -> tuple[GraphElements, Optional[list], list]:
     if (
         n_clicks is None
         or n_clicks < 1
         or len(sidebar_children) == 0
         or sidebar_children[0]["props"]["id"] == "confirm-edit-button"
     ):
-        return elements, dropdown_options
+        return elements, dropdown_options, data
     ATTRIBUTE_INPUT_FIELDS_START_IDX = get_attribute_input_field_start(sidebar_children)
+    selected_items = Selected_items()
+    selected_items.set_data(data)
     elements_idxs = selected_items.get_elements_idxs()
     common_attrs = selected_items.get_attrs()
     selected_nodes = selected_items.get_nodes()
@@ -742,7 +768,7 @@ def confirm_button_click(
             new_common_attrs,
         )
     selected_items.set_attrs(new_common_attrs)
-    return elements, new_common_attrs
+    return elements, new_common_attrs, selected_items.get_data()
 
 
 def get_attribute_input_field_start(sidebar_children: list[InputComponent]) -> int:
@@ -827,7 +853,8 @@ def extract_value_from_children(
 
 
 @app.callback(
-    [Output("graph-cytoscape", "elements"), Output("sidebar_div", "children")],
+    [Output("graph-cytoscape", "elements"), Output("sidebar_div", "children"), 
+     Output("selected-items", "data")],
     [
         Input("add-attribute-button", "n_clicks"),
         State("sidebar_div", "children"),
@@ -836,6 +863,7 @@ def extract_value_from_children(
         State("add-attribute-name", "value"),
         State("add-attribute-value-container", "children"),
         State("attribute-type-dropdown", "value"),
+        State("selected-items", "data")
     ],
     prevent_initial_call=True,
 )
@@ -847,7 +875,8 @@ def add_button_click(
     new_attribute_name: Optional[str],
     attr_val_container_children: Optional[list],
     type_dropdown_value: str,
-) -> tuple[GraphElements, list]:
+    data: list
+) -> tuple[GraphElements, list, list]:
     if (
         n_clicks is None
         or n_clicks < 1
@@ -856,13 +885,15 @@ def add_button_click(
         or attr_val_container_children is None
         or len(attr_val_container_children) == 0
     ):
-        return elements, sidebar_children
+        return elements, sidebar_children, data
     REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM = 1
     NEW_ATTRIBUTE_FIELD_NAME_OFFSET = 4
     ADD_ATTRIBUTE_BUTTON_OFFSET = 6
     new_attribute_value = extract_value_from_children(
         attr_val_container_children, dropdown_value=type_dropdown_value
     )
+    selected_items = Selected_items()
+    selected_items.set_data(data)
     elements_idxs = selected_items.get_elements_idxs()
     for element_idx in elements_idxs:
         elements[element_idx]["data"][ADD_ATTRS][
@@ -892,17 +923,19 @@ def add_button_click(
     sidebar_children.insert(
         insert_idx, create_attribute_name_input_field(new_attribute_name)
     )
-    return elements, sidebar_children
+    return elements, sidebar_children, selected_items.get_data()
 
 
 @app.callback(
-    [Output("graph-cytoscape", "elements"), Output("sidebar_div", "children")],
+    [Output("graph-cytoscape", "elements"), Output("sidebar_div", "children"),
+     Output("selected-items", "data")],
     [
         Input("remove-attribute-button", "n_clicks"),
         State("sidebar_div", "children"),
         State("graph-cytoscape", "elements"),
         State("remove-attribute-dropdown", "options"),
         State("remove-attribute-dropdown", "value"),
+        State("selected-items", "data")
     ],
     prevent_initial_call=True,
 )
@@ -912,9 +945,12 @@ def remove_button_click(
     elements: GraphElements,
     remove_options: list,
     remove_value: Optional[str],
-) -> tuple[GraphElements, list]:
+    data: list
+) -> tuple[GraphElements, list, list]:
     if n_clicks is None or n_clicks < 1 or remove_value is None or remove_value == "":
-        return elements, sidebar_children
+        return elements, sidebar_children, data
+    selected_items = Selected_items()
+    selected_items.set_data(data)
     elements_idxs = selected_items.get_elements_idxs()
     for element_idx in elements_idxs:
         elements[element_idx]["data"][ADD_ATTRS].pop(remove_value)
@@ -944,7 +980,7 @@ def remove_button_click(
     sidebar_children.pop(FIRST_ATTR_INPUT_IDX + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX)
     common_attrs.remove(remove_value)
     selected_items.set_attrs(common_attrs)
-    return elements, sidebar_children
+    return elements, sidebar_children, selected_items.get_data()
 
 
 @app.callback(
