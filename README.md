@@ -1,7 +1,7 @@
 # Map Editor for Patrolling Games a.k.a. Graph Editor
 
 ## Requirements
-1. Python 3.9 installed
+1. Python 3.9+ installed
 2. Install according dependecies using `pip` by
 ```shell
 pip install -r requirements.txt
