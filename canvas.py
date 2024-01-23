@@ -1,8 +1,3 @@
-from dash_extensions.enrich import (  # type: ignore
-    Output,
-    Input,
-    State
-)
 from typing import Optional
 from type_aliases import (
     GraphElements,
@@ -14,7 +9,6 @@ from graph_utils import (
     id_generator,
     is_removable_edge
 )
-from app import app
 from attribute_editor import Selected_items
 
 
@@ -43,15 +37,6 @@ def can_add_new_edge(
     return True
 
 
-@app.callback(
-    Output("graph-cytoscape", "elements"),
-    [
-        Input("graph-cytoscape", "ehcompleteSource"),
-        Input("graph-cytoscape", "ehcompleteTarget"),
-        State("graph-cytoscape", "elements"),
-        State("orientation-graph-switcher", "on"),
-    ],
-)
 def rebind_new_edge(
     source: Optional[GraphElement],
     target: Optional[GraphElement],
@@ -71,16 +56,6 @@ def rebind_new_edge(
     return elements
 
 
-@app.callback(
-    Output("graph-cytoscape", "elements"),
-    [
-        Input("graph-cytoscape", "ele_move_pos"),
-        State("graph-cytoscape", "ele_move_data"),
-        State("graph-cytoscape", "elements"),
-        State("graph-cytoscape", "selectedNodeData"),
-        State("selected-items", "data")
-    ],
-)
 def update_positions(
     new_node_position: dict,
     moved_node_data: dict,
@@ -113,13 +88,6 @@ def update_positions(
     return elements
 
 
-@app.callback(
-    Output("graph-cytoscape", "elements"),
-    [
-        Input("graph-cytoscape", "dblTapData"),
-        State("graph-cytoscape", "elements"),
-    ],
-)
 def add_node(pos: Optional[dict], elements: GraphElements) -> GraphElements:
     if pos is None:
         return elements
@@ -132,13 +100,6 @@ def add_node(pos: Optional[dict], elements: GraphElements) -> GraphElements:
     return elements
 
 
-@app.callback(
-    Output("graph-cytoscape", "elements"),
-    [
-        Input("graph-cytoscape", "dblTapNode"),
-        State("graph-cytoscape", "elements"),
-    ],
-)
 def delete_node(node: Optional[GraphElement], elements: GraphElements) -> GraphElements:
     if node is None:
         return elements
@@ -155,13 +116,6 @@ def delete_node(node: Optional[GraphElement], elements: GraphElements) -> GraphE
     return elements
 
 
-@app.callback(
-    Output("graph-cytoscape", "elements"),
-    [
-        Input("graph-cytoscape", "dblTapEdge"),
-        State("graph-cytoscape", "elements"),
-    ],
-)
 def delete_edge(edge: Optional[GraphElement], elements: GraphElements) -> GraphElements:
     if edge is None:
         return elements

@@ -284,6 +284,151 @@ def is_right_input_type(
     )
 
 
+def confirm_button_click(
+    n_clicks: Optional[int],
+    sidebar_children: list[InputComponent],
+    elements: GraphElements,
+    dropdown_options: Optional[list],
+    data: list
+) -> tuple[GraphElements, Optional[list], list]:
+    if (
+        n_clicks is None
+        or n_clicks < 1
+        or len(sidebar_children) == 0
+        or sidebar_children[0]["props"]["id"] == "confirm-edit-button"
+    ):
+        return elements, dropdown_options, data
+    ATTRIBUTE_INPUT_FIELDS_START_IDX = get_attribute_input_field_start(sidebar_children)
+    selected_items = Selected_items()
+    selected_items.set_data(data)
+    elements_idxs = selected_items.get_elements_idxs()
+    common_attrs = selected_items.get_attrs()
+    selected_nodes = selected_items.get_nodes()
+    selected_edges = selected_items.get_edges()
+    if len(selected_nodes) == 1 and len(selected_edges) == 0:
+        NODE_LABEL_FIELD_IDX = 2
+        elements[elements_idxs[0]]["data"]["label"] = sidebar_children[
+            NODE_LABEL_FIELD_IDX
+        ]["props"]["value"]
+    new_common_attrs = common_attrs.copy()
+    for element_idx in elements_idxs:
+        update_element_attributes_sidebar(
+            ATTRIBUTE_INPUT_FIELDS_START_IDX,
+            sidebar_children,
+            element_idx,
+            elements,
+            common_attrs,
+            new_common_attrs,
+        )
+    selected_items.set_attrs(new_common_attrs)
+    return elements, new_common_attrs, selected_items.get_data()
+
+
+def add_button_click(
+    n_clicks: Optional[int],
+    sidebar_children: list,
+    elements: GraphElements,
+    dropdown_options: list,
+    new_attribute_name: Optional[str],
+    attr_val_container_children: Optional[list],
+    type_dropdown_value: str,
+    data: list
+) -> tuple[GraphElements, list, list]:
+    if (
+        n_clicks is None
+        or n_clicks < 1
+        or new_attribute_name is None
+        or new_attribute_name == ""
+        or attr_val_container_children is None
+        or len(attr_val_container_children) == 0
+    ):
+        return elements, sidebar_children, data
+    REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM = 1
+    NEW_ATTRIBUTE_FIELD_NAME_OFFSET = 4
+    ADD_ATTRIBUTE_BUTTON_OFFSET = 6
+    new_attribute_value = extract_value_from_children(
+        attr_val_container_children, dropdown_value=type_dropdown_value
+    )
+    selected_items = Selected_items()
+    selected_items.set_data(data)
+    elements_idxs = selected_items.get_elements_idxs()
+    for element_idx in elements_idxs:
+        elements[element_idx]["data"][ADD_ATTRS][
+            new_attribute_name
+        ] = new_attribute_value
+    common_attrs = selected_items.get_attrs()
+    common_attrs.append(new_attribute_name)
+    selected_items.set_attrs(common_attrs)
+    dropdown_options.append(new_attribute_name)
+    insert_idx = 0
+    for i in range(len(sidebar_children)):
+        if is_confirm_edit_button(sidebar_children, i):
+            insert_idx = i
+    sidebar_children[insert_idx + REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM]["props"][
+        "options"
+    ] = dropdown_options
+    sidebar_children[insert_idx + NEW_ATTRIBUTE_FIELD_NAME_OFFSET]["props"][
+        "value"
+    ] = ""
+    sidebar_children[insert_idx + ADD_ATTRIBUTE_BUTTON_OFFSET]["props"][
+        "disabled"
+    ] = True
+    sidebar_children.insert(
+        insert_idx,
+        create_attribute_value_input_field(new_attribute_value, new_attribute_name),
+    )
+    sidebar_children.insert(
+        insert_idx, create_attribute_name_input_field(new_attribute_name)
+    )
+    return elements, sidebar_children, selected_items.get_data()
+
+
+def remove_button_click(
+    n_clicks: Optional[int],
+    sidebar_children: list,
+    elements: GraphElements,
+    remove_options: list,
+    remove_value: Optional[str],
+    data: list
+) -> tuple[GraphElements, list, list]:
+    if n_clicks is None or n_clicks < 1 or remove_value is None or remove_value == "":
+        return elements, sidebar_children, data
+    selected_items = Selected_items()
+    selected_items.set_data(data)
+    elements_idxs = selected_items.get_elements_idxs()
+    for element_idx in elements_idxs:
+        elements[element_idx]["data"][ADD_ATTRS].pop(remove_value)
+    common_attrs = selected_items.get_attrs()
+    remove_options.remove(remove_value)
+    FIRST_ATTR_INPUT_IDX = get_attribute_input_field_start(sidebar_children)
+    CONFIRM_IDX = 0
+    for i in range(len(sidebar_children)):
+        if is_confirm_edit_button(sidebar_children, i):
+            CONFIRM_IDX = i
+            break
+    REMOVE_DROPDOWN_OFFSET = 1
+    REMOVE_DROPDOWN_IDX = CONFIRM_IDX + REMOVE_DROPDOWN_OFFSET
+    REMOVE_BUTTON_OFFSET = 2
+    REMOVED_ATTRIBUTE_VALUE_OFFSET_FROM_NAME = 1
+    sidebar_children[REMOVE_DROPDOWN_IDX]["props"]["options"] = remove_options
+    sidebar_children[REMOVE_DROPDOWN_IDX]["props"]["value"] = ""
+    sidebar_children[CONFIRM_IDX + REMOVE_BUTTON_OFFSET]["props"]["disabled"] = True
+    ATTRIBUTE_NAME_TO_BE_DELETED_IDX = 0
+    for i in range(len(common_attrs)):
+        if common_attrs[i] == remove_value:
+            ATTRIBUTE_NAME_TO_BE_DELETED_IDX = i
+            break
+    sidebar_children.pop(
+        FIRST_ATTR_INPUT_IDX
+        + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX
+        + REMOVED_ATTRIBUTE_VALUE_OFFSET_FROM_NAME
+    )
+    sidebar_children.pop(FIRST_ATTR_INPUT_IDX + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX)
+    common_attrs.remove(remove_value)
+    selected_items.set_attrs(common_attrs)
+    return elements, sidebar_children, selected_items.get_data()
+
+
 # APP CALLBACKS
 @app.callback(
     [Output("sidebar_container", "children"),
@@ -449,191 +594,3 @@ def set_attribute_value_input_type(
 )
 def remove_button_disabler(dropdown_value: Optional[str]) -> bool:
     return dropdown_value is None or dropdown_value == ""
-
-
-@app.callback(
-    [
-        Output("graph-cytoscape", "elements"),
-        Output("remove-attribute-dropdown", "options"),
-        Output("selected-items", "data")
-    ],
-    [
-        Input("confirm-edit-button", "n_clicks"),
-        State("sidebar_div", "children"),
-        State("graph-cytoscape", "elements"),
-        State("remove-attribute-dropdown", "options"),
-        State("selected-items", "data")
-    ],
-    prevent_initial_call=True,
-)
-def confirm_button_click(
-    n_clicks: Optional[int],
-    sidebar_children: list[InputComponent],
-    elements: GraphElements,
-    dropdown_options: Optional[list],
-    data: list
-) -> tuple[GraphElements, Optional[list], list]:
-    if (
-        n_clicks is None
-        or n_clicks < 1
-        or len(sidebar_children) == 0
-        or sidebar_children[0]["props"]["id"] == "confirm-edit-button"
-    ):
-        return elements, dropdown_options, data
-    ATTRIBUTE_INPUT_FIELDS_START_IDX = get_attribute_input_field_start(sidebar_children)
-    selected_items = Selected_items()
-    selected_items.set_data(data)
-    elements_idxs = selected_items.get_elements_idxs()
-    common_attrs = selected_items.get_attrs()
-    selected_nodes = selected_items.get_nodes()
-    selected_edges = selected_items.get_edges()
-    if len(selected_nodes) == 1 and len(selected_edges) == 0:
-        NODE_LABEL_FIELD_IDX = 2
-        elements[elements_idxs[0]]["data"]["label"] = sidebar_children[
-            NODE_LABEL_FIELD_IDX
-        ]["props"]["value"]
-    new_common_attrs = common_attrs.copy()
-    for element_idx in elements_idxs:
-        update_element_attributes_sidebar(
-            ATTRIBUTE_INPUT_FIELDS_START_IDX,
-            sidebar_children,
-            element_idx,
-            elements,
-            common_attrs,
-            new_common_attrs,
-        )
-    selected_items.set_attrs(new_common_attrs)
-    return elements, new_common_attrs, selected_items.get_data()
-
-
-@app.callback(
-    [Output("graph-cytoscape", "elements"), Output("sidebar_div", "children"),
-     Output("selected-items", "data")],
-    [
-        Input("add-attribute-button", "n_clicks"),
-        State("sidebar_div", "children"),
-        State("graph-cytoscape", "elements"),
-        State("remove-attribute-dropdown", "options"),
-        State("add-attribute-name", "value"),
-        State("add-attribute-value-container", "children"),
-        State("attribute-type-dropdown", "value"),
-        State("selected-items", "data")
-    ],
-    prevent_initial_call=True,
-)
-def add_button_click(
-    n_clicks: Optional[int],
-    sidebar_children: list,
-    elements: GraphElements,
-    dropdown_options: list,
-    new_attribute_name: Optional[str],
-    attr_val_container_children: Optional[list],
-    type_dropdown_value: str,
-    data: list
-) -> tuple[GraphElements, list, list]:
-    if (
-        n_clicks is None
-        or n_clicks < 1
-        or new_attribute_name is None
-        or new_attribute_name == ""
-        or attr_val_container_children is None
-        or len(attr_val_container_children) == 0
-    ):
-        return elements, sidebar_children, data
-    REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM = 1
-    NEW_ATTRIBUTE_FIELD_NAME_OFFSET = 4
-    ADD_ATTRIBUTE_BUTTON_OFFSET = 6
-    new_attribute_value = extract_value_from_children(
-        attr_val_container_children, dropdown_value=type_dropdown_value
-    )
-    selected_items = Selected_items()
-    selected_items.set_data(data)
-    elements_idxs = selected_items.get_elements_idxs()
-    for element_idx in elements_idxs:
-        elements[element_idx]["data"][ADD_ATTRS][
-            new_attribute_name
-        ] = new_attribute_value
-    common_attrs = selected_items.get_attrs()
-    common_attrs.append(new_attribute_name)
-    selected_items.set_attrs(common_attrs)
-    dropdown_options.append(new_attribute_name)
-    insert_idx = 0
-    for i in range(len(sidebar_children)):
-        if is_confirm_edit_button(sidebar_children, i):
-            insert_idx = i
-    sidebar_children[insert_idx + REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM]["props"][
-        "options"
-    ] = dropdown_options
-    sidebar_children[insert_idx + NEW_ATTRIBUTE_FIELD_NAME_OFFSET]["props"][
-        "value"
-    ] = ""
-    sidebar_children[insert_idx + ADD_ATTRIBUTE_BUTTON_OFFSET]["props"][
-        "disabled"
-    ] = True
-    sidebar_children.insert(
-        insert_idx,
-        create_attribute_value_input_field(new_attribute_value, new_attribute_name),
-    )
-    sidebar_children.insert(
-        insert_idx, create_attribute_name_input_field(new_attribute_name)
-    )
-    return elements, sidebar_children, selected_items.get_data()
-
-
-@app.callback(
-    [Output("graph-cytoscape", "elements"), Output("sidebar_div", "children"),
-     Output("selected-items", "data")],
-    [
-        Input("remove-attribute-button", "n_clicks"),
-        State("sidebar_div", "children"),
-        State("graph-cytoscape", "elements"),
-        State("remove-attribute-dropdown", "options"),
-        State("remove-attribute-dropdown", "value"),
-        State("selected-items", "data")
-    ],
-    prevent_initial_call=True,
-)
-def remove_button_click(
-    n_clicks: Optional[int],
-    sidebar_children: list,
-    elements: GraphElements,
-    remove_options: list,
-    remove_value: Optional[str],
-    data: list
-) -> tuple[GraphElements, list, list]:
-    if n_clicks is None or n_clicks < 1 or remove_value is None or remove_value == "":
-        return elements, sidebar_children, data
-    selected_items = Selected_items()
-    selected_items.set_data(data)
-    elements_idxs = selected_items.get_elements_idxs()
-    for element_idx in elements_idxs:
-        elements[element_idx]["data"][ADD_ATTRS].pop(remove_value)
-    common_attrs = selected_items.get_attrs()
-    remove_options.remove(remove_value)
-    FIRST_ATTR_INPUT_IDX = get_attribute_input_field_start(sidebar_children)
-    CONFIRM_IDX = 0
-    for i in range(len(sidebar_children)):
-        if is_confirm_edit_button(sidebar_children, i):
-            CONFIRM_IDX = i
-            break
-    REMOVE_DROPDOWN_OFFSET = 1
-    REMOVE_DROPDOWN_IDX = CONFIRM_IDX + REMOVE_DROPDOWN_OFFSET
-    REMOVE_BUTTON_OFFSET = 2
-    REMOVED_ATTRIBUTE_VALUE_OFFSET_FROM_NAME = 1
-    sidebar_children[REMOVE_DROPDOWN_IDX]["props"]["options"] = remove_options
-    sidebar_children[REMOVE_DROPDOWN_IDX]["props"]["value"] = ""
-    sidebar_children[CONFIRM_IDX + REMOVE_BUTTON_OFFSET]["props"]["disabled"] = True
-    ATTRIBUTE_NAME_TO_BE_DELETED_IDX = 0
-    for i in range(len(common_attrs)):
-        if common_attrs[i] == remove_value:
-            ATTRIBUTE_NAME_TO_BE_DELETED_IDX = i
-            break
-    sidebar_children.pop(
-        FIRST_ATTR_INPUT_IDX
-        + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX
-        + REMOVED_ATTRIBUTE_VALUE_OFFSET_FROM_NAME
-    )
-    sidebar_children.pop(FIRST_ATTR_INPUT_IDX + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX)
-    common_attrs.remove(remove_value)
-    selected_items.set_attrs(common_attrs)
-    return elements, sidebar_children, selected_items.get_data()
