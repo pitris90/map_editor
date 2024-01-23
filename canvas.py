@@ -15,6 +15,7 @@ from graph_utils import (
     is_removable_edge
 )
 from app import app
+from attribute_editor import Selected_items
 
 
 def can_add_new_edge(
@@ -77,6 +78,7 @@ def rebind_new_edge(
         State("graph-cytoscape", "ele_move_data"),
         State("graph-cytoscape", "elements"),
         State("graph-cytoscape", "selectedNodeData"),
+        State("selected-items", "data")
     ],
 )
 def update_positions(
@@ -84,7 +86,10 @@ def update_positions(
     moved_node_data: dict,
     elements: GraphElements,
     selected_node_data: Optional[list],
+    data: list
 ) -> GraphElements:
+    selected_items = Selected_items()
+    selected_items.set_data(data)
     element_edited = False
     x_diff, y_diff = 0, 0
     for element in elements:
