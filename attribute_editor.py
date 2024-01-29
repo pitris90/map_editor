@@ -464,9 +464,6 @@ def create_attribute_input_fields(
     selected_items.set_nodes(selected_nodes)
     selected_items.set_edges(selected_edges)
     selected_items.generate_selected_elements_idxs(elements)
-    sidebar_children.append(
-        html.H4("Graph Element's Properties Editor", id="graph_prop_editor_heading")
-    )
     if len(selected_nodes) == 1 and len(selected_edges) == 0:
         sidebar_children.append(html.H5("Node's Label", id="node_label_field_heading"))
         sidebar_children.append(
