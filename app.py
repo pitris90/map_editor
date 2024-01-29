@@ -78,7 +78,3 @@ app.layout = APP_LAYOUT
 #         print(edge_data)
 #         return "Klik"
 #     return "Neklik"
-
-
-if __name__ == "__main__":
-    app.run_server(debug=False)

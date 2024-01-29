@@ -4,26 +4,17 @@ import importlib
 import inspect
 import re
 import ast
-from app import app
 import dash_bootstrap_components as dbc  # type: ignore
 import dash_daq as daq  # type: ignore
-from dash_extensions.enrich import (  # type: ignore
-    Output,
-    Input,
-    State,
-    html,
-)
+from dash_extensions.enrich import html  # type: ignore
 from typing import Any, Optional, Type
 from type_aliases import (
     Graph,
     GraphFunction,
     GraphOrNone,
-    GraphElements,
     InputComponent,
     InputValue,
 )
-from graph_utils import convert_networkx_to_cytoscape
-from sidebar import graph_orientation_switcher
 
 
 class DocError(ValueError):
@@ -164,82 +155,3 @@ def create_function_parameter_input_field(
         )
     else:
         return html.Label("Unknown parameter type in function")
-
-
-@app.callback(
-    Output("input_fields", "children"),
-    Input("graph_layout_dropdown", "value"),
-    prevent_initial_call=True,
-)
-def create_input_fields(selected_option: str) -> list[InputComponent]:
-    # using global constant
-    input_fields: list = []
-    if selected_option is None:
-        return input_fields
-    selected_function = FUNCTION_DICT[selected_option]
-    doc = inspect.getdoc(selected_function)
-    if doc is None:
-        return input_fields
-    pattern = r"\s*([\w\s]+\w)\s*-\s*(\w+)\s*:\s*(.+)"
-    parameters = re.findall(pattern, doc, flags=re.MULTILINE)
-    for parameter in parameters:
-        name, py_name, desc = parameter[0], parameter[1], parameter[2]
-        input_fields.append(
-            html.Label(name, className="label", id="param_label_" + py_name)
-        )
-        input_fields.append(dbc.Tooltip(desc, target="param_label_" + py_name))
-        type_annotation = (
-            inspect.signature(selected_function).parameters[py_name].annotation
-        )
-        input_fields.append(
-            create_function_parameter_input_field(
-                py_name, type_annotation, selected_function
-            )
-        )
-    return input_fields
-
-
-@app.callback(
-    [
-        Output("graph-cytoscape", "elements"),
-        Output("modal_menu_graph_functions", "is_open"),
-        Output("orientation-graph-switcher", "on"),
-        Output("orientation-graph-switcher", "label"),
-        Output("graph-cytoscape", "stylesheet"),
-    ],
-    [
-        Input("graph_generate_button", "n_clicks"),
-        State("graph_layout_dropdown", "value"),
-        State("input_fields", "children"),
-        State("graph-cytoscape", "stylesheet"),
-    ],
-    prevent_initial_call=True,
-)
-def button_click(
-    n_clicks: int,
-    value: str,
-    html_input_children: list[InputComponent],
-    stylesheet: list[dict],
-) -> tuple[GraphElements, bool, bool, str, list[dict]]:
-    print(html_input_children)
-    if n_clicks is None or html_input_children is None:
-        return [], False
-    param_dict = {}
-    for child in html_input_children:
-        if child["type"] == "Label" or child["type"] == "Tooltip":
-            continue
-        param_name, param_value = handle_input_dict(child)
-        param_dict[param_name] = param_value
-    graph = call_graph_function_with_params(FUNCTION_DICT[value], param_dict)
-    cytoscape_elements, directed = convert_networkx_to_cytoscape(graph)
-    label, stylesheet = graph_orientation_switcher(directed, stylesheet)
-    return cytoscape_elements, False, directed, label, stylesheet
-
-
-@app.callback(
-    Output("modal_menu_graph_functions", "is_open"),
-    [Input("open", "n_clicks")],
-    [State("modal_menu_graph_functions", "is_open")],
-)
-def toggle_modal(n1: Optional[int], is_open: bool) -> bool:
-    return n1 is not None
