@@ -449,7 +449,7 @@ def create_attribute_input_fields(
     ), optional_none_to_empty_list(selected_edges)
     selected_nodes_edges = selected_nodes + selected_edges
     if len(selected_nodes_edges) == 0:
-        return []
+        return [[], []]
     sidebar_children = []
     attributes: list = []
     additional_attrs = []

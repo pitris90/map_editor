@@ -64,7 +64,8 @@ def update_positions(
     data: list
 ) -> GraphElements:
     selected_items = Selected_items()
-    selected_items.set_data(data)
+    if data is not None and len(data) != 0:
+        selected_items.set_data(data)
     element_edited = False
     x_diff, y_diff = 0, 0
     for element in elements:
