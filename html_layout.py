@@ -42,14 +42,14 @@ APP_LAYOUT = html.Div(
                 ),
                 dcc.Download(id="save-graph"),
                 dbc.Button("Download Graph", id="save-graph-image", class_name="mb-2"),
-                dbc.Button("Graph Template Functions", id="open", class_name="mb-2"),
+                dbc.Button("Generate Graph from Function", id="open", class_name="mb-2"),
                 dbc.Modal(
                     [
-                        dbc.ModalHeader("Graph Templates"),
+                        dbc.ModalHeader("Graph Functions"),
                         dbc.ModalBody(children=GRAPH_TEMPLATES),
                         dbc.ModalFooter(
                             dbc.Button(
-                                "Generate Graph from Template",
+                                "Generate Graph from Function",
                                 id="graph_generate_button",
                                 className="ml-auto",
                             )
