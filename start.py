@@ -3,6 +3,7 @@ from app import app
 import attribute_editor  # noqa: F401
 import canvas  # noqa: F401
 import sidebar  # noqa: F401
+import action_manager  # noqa: F401
 
 if __name__ == "__main__":
     app.run_server(debug=False)
