@@ -57,7 +57,7 @@ APP_LAYOUT = html.Div(
                     ],
                     id="modal_menu_graph_functions",
                 ),
-                daq.BooleanSwitch(
+                daq.BooleanSwitch(  # type: ignore
                     on=False,
                     id="orientation-graph-switcher",
                     label="Undirected",
@@ -93,7 +93,8 @@ APP_LAYOUT = html.Div(
         # html.Div(id="output-data-upload"),
         # html.Div(id="position_click"),
         ATTRIBUTE_SIDEBAR_CONTAINER,
-        dcc.Store(id="selected-items")
+        dcc.Store(id="selected-items"),
+        dcc.Store(id="undo-redo-actions", data=[0])
     ],
     tabIndex="0",
     style=ROOT_DIV_STYLE,
