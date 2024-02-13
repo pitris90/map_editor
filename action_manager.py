@@ -2,8 +2,10 @@ from app import app
 from dash_extensions.enrich import (  # type: ignore
     Output,
     Input,
-    State
+    State,
+    ALL
 )
+import copy
 from typing import Optional
 from type_aliases import (
     GraphElements,
@@ -21,7 +23,8 @@ from canvas import (
 from attribute_editor import (
     confirm_button_click,
     add_button_click,
-    remove_button_click
+    remove_button_click,
+    confirm_label_button_click
 )
 
 
@@ -64,7 +67,7 @@ def action_add_node(
     elements: GraphElements,
     u_r_actions: U_R_Actions_Init
 ) -> tuple[GraphElements, U_R_Actions_Init]:
-    before_action = list(elements)
+    before_action = copy.deepcopy(elements)
     add_node_output = add_node(pos, elements)
     return add_node_output, insert_u_r_action(u_r_actions, before_action, add_node_output)
 
@@ -85,7 +88,7 @@ def action_delete_node(
     elements: GraphElements,
     u_r_actions: U_R_Actions_Init
 ) -> tuple[GraphElements, U_R_Actions_Init]:
-    before_action = list(elements)
+    before_action = copy.deepcopy(elements)
     delete_node_output = delete_node(node, elements)
     return delete_node_output, insert_u_r_action(u_r_actions, before_action, delete_node_output)
 
@@ -106,7 +109,7 @@ def action_delete_edge(
     elements: GraphElements,
     u_r_actions: U_R_Actions_Init
 ) -> tuple[GraphElements, U_R_Actions_Init]:
-    before_action = list(elements)
+    before_action = copy.deepcopy(elements)
     delete_edge_output = delete_edge(edge, elements)
     return delete_edge_output, insert_u_r_action(u_r_actions, before_action, delete_edge_output)
 
@@ -133,7 +136,7 @@ def action_update_positions(
     data: list,
     u_r_actions: U_R_Actions_Init
 ) -> tuple[GraphElements, U_R_Actions_Init]:
-    before_action = list(elements)
+    before_action = copy.deepcopy(elements)
     positions_output = update_positions(
         new_node_position,
         moved_node_data,
@@ -163,7 +166,7 @@ def action_rebind_new_edge(
     directed: bool,
     u_r_actions: U_R_Actions_Init
 ) -> tuple[GraphElements, U_R_Actions_Init]:
-    before_action = list(elements)
+    before_action = copy.deepcopy(elements)
     rebind_new_edge_output = rebind_new_edge(source, target, elements, directed)
     return rebind_new_edge_output, insert_u_r_action(u_r_actions, before_action,
                                                      rebind_new_edge_output)
@@ -172,35 +175,42 @@ def action_rebind_new_edge(
 @app.callback(
     [
         Output("graph-cytoscape", "elements"),
-        Output("remove-attribute-dropdown", "options"),
+        Output("sidebar_div", "children"),
         Output("selected-items", "data"),
+        Output("previous-attr-elements", "data"),
         Output("undo-redo-actions", "data")
     ],
     [
-        Input("confirm-edit-button", "n_clicks"),
+        Input({"type": "attr_edit_confirm", "index": ALL}, "n_clicks"),
         State("sidebar_div", "children"),
         State("graph-cytoscape", "elements"),
-        State("remove-attribute-dropdown", "options"),
+        State({"type": "attr_edit_confirm", "index": ALL}, "id"),
+        State({"type": "attr_name_input", "index": ALL}, "value"),
         State("selected-items", "data"),
+        State("previous-attr-elements", "data"),
         State("undo-redo-actions", "data")
     ],
     prevent_initial_call=True,
 )
 def action_confirm_button_click(
-    n_clicks: Optional[int],
+    n_clicks: list,
     sidebar_children: list[InputComponent],
     elements: GraphElements,
-    dropdown_options: Optional[list],
+    row_button_ids: list,
+    row_names: list,
     data: list,
+    previous_attr_elements: dict,
     u_r_actions: U_R_Actions_Init
-) -> tuple[GraphElements, Optional[list], list, U_R_Actions_Init]:
-    before_action = list(elements)
+) -> tuple[GraphElements, Optional[list], list, dict, U_R_Actions_Init]:
+    before_action = copy.deepcopy(elements)
     confirm_button_click_output = confirm_button_click(
         n_clicks,
         sidebar_children,
         elements,
-        dropdown_options,
-        data)
+        row_button_ids,
+        row_names,
+        data,
+        previous_attr_elements)
     return confirm_button_click_output + (insert_u_r_action(u_r_actions, before_action,
                                                             confirm_button_click_output[0]),)
 
@@ -216,7 +226,6 @@ def action_confirm_button_click(
         Input("add-attribute-button", "n_clicks"),
         State("sidebar_div", "children"),
         State("graph-cytoscape", "elements"),
-        State("remove-attribute-dropdown", "options"),
         State("add-attribute-name", "value"),
         State("add-attribute-value-container", "children"),
         State("attribute-type-dropdown", "value"),
@@ -229,19 +238,17 @@ def action_add_button_click(
     n_clicks: Optional[int],
     sidebar_children: list,
     elements: GraphElements,
-    dropdown_options: list,
     new_attribute_name: Optional[str],
     attr_val_container_children: Optional[list],
     type_dropdown_value: str,
     data: list,
     u_r_actions: U_R_Actions_Init
 ) -> tuple[GraphElements, list, list, U_R_Actions_Init]:
-    before_action = list(elements)
+    before_action = copy.deepcopy(elements)
     add_button_click_output = add_button_click(
         n_clicks,
         sidebar_children,
         elements,
-        dropdown_options,
         new_attribute_name,
         attr_val_container_children,
         type_dropdown_value,
@@ -256,39 +263,81 @@ def action_add_button_click(
         Output("graph-cytoscape", "elements"),
         Output("sidebar_div", "children"),
         Output("selected-items", "data"),
+        Output("previous-attr-elements", "data"),
         Output("undo-redo-actions", "data")
     ],
     [
-        Input("remove-attribute-button", "n_clicks"),
+        Input({"type": "attr_delete", "index": ALL}, "n_clicks"),
         State("sidebar_div", "children"),
         State("graph-cytoscape", "elements"),
-        State("remove-attribute-dropdown", "options"),
-        State("remove-attribute-dropdown", "value"),
+        State({"type": "attr_delete", "index": ALL}, "id"),
+        State({"type": "attr_name_text", "index": ALL}, "children"),
         State("selected-items", "data"),
-        State("undo-redo-actions", "data")
+        State("undo-redo-actions", "data"),
+        State("previous-attr-elements", "data")
     ],
     prevent_initial_call=True,
 )
 def action_remove_button_click(
-    n_clicks: Optional[int],
+    n_clicks: list,
     sidebar_children: list,
     elements: GraphElements,
-    remove_options: list,
-    remove_value: Optional[str],
+    row_button_ids: list,
+    remove_value: list,
     data: list,
-    u_r_actions: U_R_Actions_Init
-) -> tuple[GraphElements, list, list, U_R_Actions_Init]:
-    before_action = list(elements)
+    u_r_actions: U_R_Actions_Init,
+    previous_attr_elements: dict
+) -> tuple[GraphElements, list, list, dict, U_R_Actions_Init]:
+    before_action = copy.deepcopy(elements)
     remove_button_click_output = remove_button_click(
         n_clicks,
         sidebar_children,
         elements,
-        remove_options,
+        row_button_ids,
         remove_value,
-        data
+        data,
+        previous_attr_elements
     )
     return remove_button_click_output + (insert_u_r_action(u_r_actions, before_action,
                                                            remove_button_click_output[0]),)
+
+
+@app.callback(
+    [
+        Output("graph-cytoscape", "elements"),
+        Output("sidebar_div", "children"),
+        Output("previous-attr-elements", "data"),
+        Output("undo-redo-actions", "data")
+    ],
+    [
+        Input("label_edit_confirm", "n_clicks"),
+        State("sidebar_div", "children"),
+        State("graph-cytoscape", "elements"),
+        State("selected-items", "data"),
+        State("previous-attr-elements", "data"),
+        State("undo-redo-actions", "data")
+    ],
+    prevent_initial_call=True,
+)
+def action_confirm_label_button_click(
+    n_clicks: Optional[int],
+    sidebar_children: list[InputComponent],
+    elements: GraphElements,
+    data: list,
+    previous_attr_elements: dict,
+    new_label: str,
+    u_r_actions: U_R_Actions_Init
+) -> tuple[GraphElements, Optional[list], dict, U_R_Actions_Init]:
+    before_action = copy.deepcopy(elements)
+    confirm_button_click_output = confirm_label_button_click(
+        n_clicks,
+        sidebar_children,
+        elements,
+        data,
+        previous_attr_elements,
+        new_label)
+    return confirm_button_click_output + (insert_u_r_action(u_r_actions, before_action,
+                                                            confirm_button_click_output[0]),)
 
 
 @app.callback(

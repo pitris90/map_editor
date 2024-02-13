@@ -94,7 +94,8 @@ APP_LAYOUT = html.Div(
         # html.Div(id="position_click"),
         ATTRIBUTE_SIDEBAR_CONTAINER,
         dcc.Store(id="selected-items"),
-        dcc.Store(id="undo-redo-actions", data=[0])
+        dcc.Store(id="undo-redo-actions", data=[0]),
+        dcc.Store(id="previous-attr-elements", data={})
     ],
     tabIndex="0",
     style=ROOT_DIV_STYLE,

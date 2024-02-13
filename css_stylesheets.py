@@ -34,3 +34,84 @@ ROOT_DIV_STYLE = {
     "outline": None,
     "height": "100vh"
 }
+
+ATTRIBUTE_ROW_STYLE = {
+  "display": "flex",
+  "justify-content": "space-between",
+  "align-items": "center",
+  "border": "2px solid blue",
+  "height": "40px",
+  "width": "100%",
+  "margin-bottom": "10px"
+}
+
+ATTRIBUTE_COLUMN_STYLE = {
+  "display": "inline-block",
+  "justify-content": "center",
+  "align-items": "center",
+  "font-size": "18px",
+  "font-weight": "bold",
+  "color": "black"
+}
+
+STRING_ROW_COLOR = {
+    "background": "#c5e1a5"
+}
+
+NUMBER_ROW_COLOR = {
+    "background": "#81d4fa"
+}
+
+DICT_ROW_COLOR = {
+    "background": "#fff59d"
+}
+
+BOOL_ROW_COLOR = {
+    "background": "#ff8080"
+}
+
+ROW = {
+    "display": "flex",
+    "background": "rgba(0, 0, 255, 0.1)",
+    "padding": "3px 5px",
+    "align-items": "center"
+}
+
+ROW_INPUT = {
+    "border": "0",
+    "width": "30%",
+    "padding": "2px 3px"
+}
+
+ROW_INPUT_INPUT = {
+    "margin-left": "5px"
+}
+
+ROW_VAL = {
+    "padding": "0 3px",
+    "min-width": "30px",
+    "text-align": "center"
+}
+
+ROW_ROW = {
+    "margin-top": "5px"
+}
+
+BUTTONS = {
+    "flex-grow": "1",
+    "display": "flex",
+    "justify-content": "flex-end"
+}
+
+BUTTON = {
+    "background": "none",
+    "border": 0,
+    "cursor": "pointer"
+}
+
+BUTTON_IMG = {
+    "max-height": "16px",
+    "max-width": "16px",
+    "width": "16px",
+    "height": "16px"
+}

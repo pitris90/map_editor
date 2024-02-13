@@ -5,6 +5,8 @@ from dash_extensions.enrich import (  # type: ignore
     State,
     html,
     dcc,
+    ALL,
+    ctx
 )
 from type_aliases import (
     GraphElements,
@@ -17,9 +19,23 @@ import dash_bootstrap_components as dbc  # type: ignore
 import dash_daq as daq  # type: ignore
 import json
 import ast
+import copy
 from functools import reduce
-from css_stylesheets import ATTRIBUTE_SIDEBAR_STYLE
-
+from css_stylesheets import (
+    ATTRIBUTE_SIDEBAR_STYLE,
+    BUTTON,
+    BUTTON_IMG,
+    STRING_ROW_COLOR,
+    NUMBER_ROW_COLOR,
+    DICT_ROW_COLOR,
+    BOOL_ROW_COLOR,
+    ROW,
+    ROW_INPUT,
+    ROW_INPUT_INPUT,
+    ROW_VAL,
+    ROW_ROW,
+    BUTTONS
+)
 
 # Constants for indexing selected_items data
 COMMON_ATTRS = 0
@@ -27,6 +43,197 @@ ELEMENTS = 1
 EDGES = 2
 NODES = 3
 ELEMENTS_IDXS = 4
+
+# Constants for general indexing
+LABEL_TEXT_VALUE_IDX = 2
+
+BOOL_SYMBOL = "1/0"
+TEXT_SYMBOL = "A"
+DICT_SYMBOL = "{}"
+NUM_SYMBOL = "#"
+
+# Template for label rows
+LABEL_ROW_TEXT = html.Div(
+    children=[
+        html.Span(children=TEXT_SYMBOL, style=ROW_VAL),
+        html.Span(children="Label", style=ROW_INPUT),
+        html.Span(children="", id="label_text_value", style=ROW_INPUT | ROW_INPUT_INPUT),
+        html.Div(
+            children=html.Button(
+                id="label_edit_pencil",
+                children=html.Img(
+                    src="assets/pencil.svg",
+                    alt="Pencil image not found",
+                    style=BUTTON_IMG
+                ),
+                style=BUTTON
+            ), style=BUTTONS
+        )
+    ],
+    style=ROW | STRING_ROW_COLOR | ROW_ROW
+)
+LABEL_ROW_EDIT = html.Div(
+    children=[
+        html.Span(children=TEXT_SYMBOL),
+        html.Span(children="Label"),
+        dbc.Input(value="", id="label_edit_value", type="text", placeholder="Label"),
+        html.Span([
+            html.Button(
+                id="label_edit_cancel",
+                children=html.Img(
+                    src="assets/close.svg",
+                    alt="Cross image not found"
+                )
+            ),
+            html.Button(
+                id="label_edit_confirm",
+                children=html.Img(
+                    src="assets/check.svg",
+                    alt="Tick image not found"
+                )
+            )]
+        )
+    ],
+    style=ROW | STRING_ROW_COLOR | ROW_ROW
+)
+
+NAME_TYPE_TEMPLATE = dbc.Input(
+    id={
+        "type": "attr_name_input"
+    },
+    type="text",
+    style=ROW_INPUT | ROW_INPUT_INPUT
+)
+
+
+VALUE_TYPE_TEMPLATES = {
+    "bool": ["red", BOOL_SYMBOL],
+    "text": ["green", TEXT_SYMBOL],
+    "dict": ["yellow", DICT_SYMBOL],
+    "number": ["blue", NUM_SYMBOL],
+    BOOL_SYMBOL: daq.BooleanSwitch(  # type: ignore
+            id={
+                "type": "attr_value_input",
+            },
+            style=ROW_INPUT | ROW_INPUT_INPUT
+    ),
+    TEXT_SYMBOL: dbc.Input(
+        id={
+            "type": "attr_value_input"
+        },
+        type="text",
+        style=ROW_INPUT | ROW_INPUT_INPUT
+    ),
+    DICT_SYMBOL: dbc.Input(
+        id={
+            "type": "attr_value_input"
+        },
+        type="text",
+        style=ROW_INPUT | ROW_INPUT_INPUT
+    ),
+    NUM_SYMBOL: dbc.Input(
+        id={
+            "type": "attr_value_input"
+        },
+        type="number",
+        style=ROW_INPUT | ROW_INPUT_INPUT
+    )
+}
+
+ATTR_ROW_COLORS = {
+    TEXT_SYMBOL: STRING_ROW_COLOR,
+    NUM_SYMBOL: NUMBER_ROW_COLOR,
+    DICT_SYMBOL: DICT_ROW_COLOR,
+    BOOL_SYMBOL: BOOL_ROW_COLOR
+}
+
+TEXT_BUTTONS_TEMPLATE = html.Div(
+        children=[html.Button(
+            id={
+                "type": "attr_edit_pencil"
+            },
+            children=html.Img(
+                src="assets/pencil.svg",
+                alt="Pencil image not found",
+                style=BUTTON_IMG
+            ),
+            style=BUTTON
+        ), html.Button(
+            id={
+                "type": "attr_delete"
+            },
+            children=html.Img(
+                src="assets/delete.svg",
+                alt="Dust Bin image not found",
+                style=BUTTON_IMG
+            ),
+            style=BUTTON
+        )],
+        style=BUTTONS
+)
+
+EDIT_BUTTONS_TEMPLATE = html.Div(
+        children=[
+            html.Button(
+                id={
+                    "type": "attr_edit_cancel"
+                },
+                children=html.Img(
+                    src="assets/close.svg",
+                    alt="Cross image not found",
+                    style=BUTTON_IMG
+                ),
+                style=BUTTON
+            ),
+            html.Button(
+                id={
+                    "type": "attr_edit_confirm"
+                },
+                children=html.Img(
+                    src="assets/check.svg",
+                    alt="Tick image not found",
+                    style=BUTTON_IMG
+                ),
+                style=BUTTON
+            )],
+        style=BUTTONS
+)
+
+
+ROW_COLOR_IDX = 0
+ROW_SYMBOL_IDX = 1
+TYPE_SYMBOL_IDX = 0
+ATTR_NAME_IDX = 1
+ATTR_VALUE_IDX = 2
+LABEL_ROW_SIDEBAR_IDX = 0
+
+ID_AFTER_ATTRIBUTE_ROWS = "attribute-type-dropdown"
+FIRST_ROW_BUTTON_IDX = 3
+PROPS = "props"
+CHILDREN = "children"
+TYPE = "type"
+ID = "id"
+INDEX = "index"
+NAME_ELEMENT = "name-ele"
+VALUE_ELEMENT = "value-ele"
+VALUE = "value"
+ON = "on"
+ATTR_VALUE_COUNT_TYPE = "attr_value_count"
+DATA = "data"
+DIS = "disabled"
+LABEL = "label"
+
+
+class ConstError(ValueError):
+    """Raised when the value of the constant is not expected"""
+
+    pass
+
+
+class IdxError(ValueError):
+    """Raised when the value of the index is not expected"""
+
+    pass
 
 
 class Selected_items:
@@ -122,121 +329,190 @@ def count_unique_values(values: list[dict], key: str) -> int:
     return len(unique_set)
 
 
-def create_attribute_input_field(
-    additional_attrs: list[dict], value_count: int, key: str
-) -> list:
-    input_fields = []
-    first_dict = additional_attrs[0]
-    input_fields.append(create_attribute_name_input_field(key))
-    if value_count == 1:
-        input_value = first_dict[key]
-        input_fields.append(create_attribute_value_input_field(input_value, key))
-        return input_fields
-    input_fields.append(
-        html.Label(
-            "Value count: " + str(value_count),
-            className="w-50 d-inline-block mt-1 mb-1",
-        )
-    )
-    return input_fields
+def is_real_click(
+    triggered,
+    trigger_n_clicks
+):
+    if triggered is None \
+       or trigger_n_clicks is None:
+        return False
+    triggered_id = str(triggered["index"])
+    for row in trigger_n_clicks:
+        if triggered_id in row["prop_id"] and (row["value"] is None or row["value"] == 0):
+            return False
+    return True
 
 
-def create_attribute_value_input_field(
-    input_value: InputValue, attr_name: str
-) -> InputComponent:
-    evaluate_id = ""
+def get_row_list_idx(
+    id: int,  # index of attribute row in id["index"]
+    row_id_list: list  # list of all row element's ids of some element in attr row
+) -> Optional[int]:
+    for i in range(len(row_id_list)):
+        if row_id_list[i]["index"] == id:
+            return i
+    return None
+
+
+def get_sidebar_div_children_row_idx(
+    id: int,  # index of attribute row in id["index"]
+    sidebar_div_children: list
+) -> Optional[int]:
+    wanted_id = "attr_row_index" + str(id)
+    for i in range(len(sidebar_div_children)):
+        element_id = sidebar_div_children[i][PROPS].get(ID)
+        if element_id is not None and element_id == wanted_id:
+            return i
+    return None
+
+
+def get_insert_row_idx(sidebar_children: list) -> tuple[int, int]:
+    last_id = None
+    add_dropdown = None
+    for i in range(len(sidebar_children)):
+        id = sidebar_children[i][PROPS].get("id")
+        if id is not None:
+            if "attr_row_index" in id:
+                last_id = int(id[len("attr_row_index"):])
+            elif id == "attribute-type-dropdown":
+                add_dropdown = i
+                break
+    if add_dropdown is None:
+        raise IdxError()
+    if last_id is None:
+        last_id = add_dropdown - 1
+    else:
+        last_id += 1
+    return add_dropdown, last_id
+
+
+def add_buttons_index(buttons: html.Div, row_idx: int) -> None:
+    buttons.children[0].id[INDEX] = row_idx  # type: ignore
+    buttons.children[1].id[INDEX] = row_idx  # type: ignore
+
+
+def determine_value_type(input_value: InputValue) -> str:
     if isinstance(input_value, bool):
-        return daq.BooleanSwitch(
-            id="value_" + attr_name,
-            on=input_value,
-            className="w-50 d-inline-block mt-1 mb-1",
-        )
+        return "bool"
+    if isinstance(input_value, str):
+        return "text"
     if (
-        isinstance(input_value, str)
-        or isinstance(input_value, dict)
+        isinstance(input_value, dict)
         or isinstance(input_value, list)
         or isinstance(input_value, set)
     ):
-        evaluate_id = evaluate_id_addition(input_value)
-        input_type = "text"
-        input_value = str(input_value)
-    else:
-        input_type = "number"
-    return dbc.Input(
-        value=input_value,
-        id=evaluate_id + "value_" + attr_name,
-        type=input_type,
-        class_name="w-50 d-inline-block mt-1 mb-1",
-    )
+        return "dict"
+    return "number"
 
 
-def create_attribute_name_input_field(attr_name: str) -> InputComponent:
-    return dbc.Input(
-        value=attr_name,
-        type="text",
-        id="key_" + attr_name,
-        class_name="w-50 d-inline-block mt-1 mb-1",
-    )
-
-
-def evaluate_id_addition(value: Union[str, dict]) -> str:
-    if isinstance(value, dict) or isinstance(value, list) or isinstance(value, set):
-        return "dict_"
-    return "text_"
-
-
-def get_attribute_input_field_start(sidebar_children: list[InputComponent]) -> int:
-    for element_idx in range(len(sidebar_children)):
-        if (
-            sidebar_children[element_idx]["props"]["id"]
-            == "elements_prop_fields_heading"
-        ):
-            return element_idx + 1
-    return -1
-
-
-def update_element_attributes_sidebar(
-    start_idx: int,
-    sidebar_children: list[InputComponent],
-    element_idx: int,
-    elements: GraphElements,
-    common_attrs: list,
-    new_common_attrs: list,
-) -> None:
-    # iterating through attribute input fields
-    for name_input_idx in range(start_idx, len(sidebar_children), 2):
-        if is_confirm_edit_button(sidebar_children, name_input_idx):
-            break
-        common_attr_idx = (name_input_idx - start_idx) // 2
-        value_input_idx = name_input_idx + 1
-        old_name = common_attrs[common_attr_idx]
-        new_name = sidebar_children[name_input_idx]["props"]["value"]
-        update_element_value_sidebar(
-            sidebar_children, value_input_idx, elements, element_idx, old_name
-        )
-        elements[element_idx]["data"][ADD_ATTRS][new_name] = elements[element_idx][
-            "data"
-        ][ADD_ATTRS].pop(old_name)
-        new_common_attrs[common_attr_idx] = new_name
-
-
-def update_element_value_sidebar(
-    sidebar_children: list[InputComponent],
-    value_input_idx: int,
-    elements: GraphElements,
-    element_idx: int,
+def create_attribute_text_row(
     attr_name: str,
+    attr_value: InputValue,
+    value_count: int,
+    index: int
+) -> html.Div:
+    attr_row_items = []
+    value_type = determine_value_type(attr_value)
+    type_symbol = VALUE_TYPE_TEMPLATES[value_type][ROW_SYMBOL_IDX]
+    attr_row_items.append(html.Span(
+        children=type_symbol,
+        id={
+            "type": "attr_type_symbol",
+            "index": index
+        },
+        style=ROW_VAL
+    ))
+    attr_row_items.append(html.Span(
+        children=attr_name,
+        id={
+            "type": "attr_name_text",
+            "index": index
+        },
+        style=ROW_INPUT
+    ))
+    if value_count == 1:
+        attr_row_items.append(html.Span(
+            children=str(attr_value),
+            id={
+                "type": "attr_value_text",
+                "index": index
+            },
+            style=ROW_INPUT | ROW_INPUT_INPUT
+        ))
+    else:
+        attr_row_items.append(html.Span(
+            children="#: " + str(value_count),
+            id={
+                "type": ATTR_VALUE_COUNT_TYPE,
+                "index": index
+            },
+            style=ROW_INPUT | ROW_INPUT_INPUT
+        ))
+
+    text_buttons = copy.deepcopy(TEXT_BUTTONS_TEMPLATE)
+    add_buttons_index(text_buttons, index)
+    attr_row_items.append(text_buttons)
+    return html.Div(
+        children=attr_row_items,
+        id="attr_row_index" + str(index),
+        style=ROW | ATTR_ROW_COLORS[type_symbol] | ROW_ROW
+    )
+
+
+def create_label_row(label: str, row_template: html.Div) -> html.Div:
+    if row_template.children is None:
+        raise ConstError()
+    row_template.children[LABEL_TEXT_VALUE_IDX].children = label
+    return row_template
+
+
+def update_elements_attributes_name(
+    element_idxs: list,
+    elements: GraphElements,
+    new_name: str,
+    old_name: str,
+    common_attrs: list
 ) -> None:
-    if sidebar_children[value_input_idx]["type"] == "Label":
-        return
-    value = extract_value_from_children(sidebar_children, value_input_idx)
-    elements[element_idx]["data"][ADD_ATTRS][attr_name] = value
+    for element_idx in element_idxs:
+        elements[element_idx][DATA][ADD_ATTRS][new_name] = \
+            elements[element_idx][DATA][ADD_ATTRS].pop(old_name)
+    common_attrs[common_attrs.index(old_name)] = new_name
 
 
-def is_confirm_edit_button(
-    sidebar_children: list[InputComponent], idx: int
-) -> InputComponent:
-    return sidebar_children[idx]["props"].get("id", "") == "confirm-edit-button"
+def update_elements_attributes_value(
+    element_idxs: list,
+    elements: GraphElements,
+    new_value: str,
+    name: str
+) -> None:
+    for element_idx in element_idxs:
+        elements[element_idx][DATA][ADD_ATTRS][name] = new_value
+
+
+def update_attribute_rows_indices(
+    sidebar_children: list,
+    row_idx: int,
+    increment: int,
+    previous_attr_values: dict
+) -> None:
+    while sidebar_children[row_idx][PROPS][ID] != ID_AFTER_ATTRIBUTE_ROWS:
+        new_idx = row_idx + increment
+        if previous_attr_values.get(row_idx) is not None:
+            previous_attr_values[new_idx] = previous_attr_values.pop(row_idx)
+        sidebar_children[row_idx][PROPS][ID] = "attr_row_index" + str(new_idx)
+        row_children = sidebar_children[row_idx][PROPS][CHILDREN]
+        update_attribute_row_indices(row_children, new_idx)
+        row_idx += 1
+
+
+def update_attribute_row_indices(row_children: list, new_idx: int) -> None:
+    FIRST_BUTTON_IDX = 0
+    SECOND_BUTTON_IDX = 1
+    for i in range(len(row_children)):
+        if i >= FIRST_ROW_BUTTON_IDX:
+            row_children[i][PROPS][CHILDREN][FIRST_BUTTON_IDX][PROPS][ID][INDEX] = new_idx
+            row_children[i][PROPS][CHILDREN][SECOND_BUTTON_IDX][PROPS][ID][INDEX] = new_idx
+            continue
+        row_children[i][PROPS][ID][INDEX] = new_idx
 
 
 def extract_value_from_children(
@@ -285,50 +561,59 @@ def is_right_input_type(
 
 
 def confirm_button_click(
-    n_clicks: Optional[int],
+    n_clicks: list,
     sidebar_children: list[InputComponent],
     elements: GraphElements,
-    dropdown_options: Optional[list],
-    data: list
-) -> tuple[GraphElements, Optional[list], list]:
-    if (
-        n_clicks is None
-        or n_clicks < 1
-        or len(sidebar_children) == 0
-        or sidebar_children[0]["props"]["id"] == "confirm-edit-button"
-    ):
-        return elements, dropdown_options, data
-    ATTRIBUTE_INPUT_FIELDS_START_IDX = get_attribute_input_field_start(sidebar_children)
+    row_button_ids: list,
+    row_names: list,
+    data: list,
+    previous_attr_elements: dict
+) -> tuple[GraphElements, Optional[list], list, dict]:
+    triggered = ctx.triggered_id
+    triggered_n_clicks = ctx.triggered
+    if not is_real_click(triggered, triggered_n_clicks):
+        return elements, sidebar_children, data, previous_attr_elements
+    row_idx = triggered["index"]  # type: ignore
+    row_sidebar_idx = get_sidebar_div_children_row_idx(row_idx, sidebar_children)
+    if row_sidebar_idx is None:
+        raise IdxError()
+    str_row_idx = str(row_idx)
+    row_children = sidebar_children[row_sidebar_idx][PROPS][CHILDREN]
     selected_items = Selected_items()
     selected_items.set_data(data)
-    elements_idxs = selected_items.get_elements_idxs()
+    element_idxs = selected_items.get_elements_idxs()
     common_attrs = selected_items.get_attrs()
-    selected_nodes = selected_items.get_nodes()
-    selected_edges = selected_items.get_edges()
-    if len(selected_nodes) == 1 and len(selected_edges) == 0:
-        NODE_LABEL_FIELD_IDX = 2
-        elements[elements_idxs[0]]["data"]["label"] = sidebar_children[
-            NODE_LABEL_FIELD_IDX
-        ]["props"]["value"]
-    new_common_attrs = common_attrs.copy()
-    for element_idx in elements_idxs:
-        update_element_attributes_sidebar(
-            ATTRIBUTE_INPUT_FIELDS_START_IDX,
-            sidebar_children,
-            element_idx,
-            elements,
-            common_attrs,
-            new_common_attrs,
-        )
-    selected_items.set_attrs(new_common_attrs)
-    return elements, new_common_attrs, selected_items.get_data()
+    first_element_idx = element_idxs[0]
+    value_count = 1
+
+    old_name = previous_attr_elements[str_row_idx][NAME_ELEMENT][PROPS][CHILDREN]
+    new_name = row_children[ATTR_NAME_IDX][PROPS][VALUE]
+    attr_value_props = row_children[ATTR_VALUE_IDX][PROPS]
+    new_value = elements[first_element_idx][DATA][ADD_ATTRS][old_name]
+    update_elements_attributes_name(element_idxs, elements, new_name, old_name, common_attrs)
+    if attr_value_props[ID][TYPE] == ATTR_VALUE_COUNT_TYPE:
+        value_count = int(attr_value_props[CHILDREN][3:])
+    else:
+        if row_children[TYPE_SYMBOL_IDX][PROPS][CHILDREN] == BOOL_SYMBOL:
+            new_value = attr_value_props[ON]
+        elif row_children[TYPE_SYMBOL_IDX][PROPS][CHILDREN] == DICT_SYMBOL:
+            new_value = ast.literal_eval(attr_value_props[VALUE])
+        else:
+            new_value = attr_value_props[VALUE]
+        update_elements_attributes_value(element_idxs, elements, new_value, new_name)
+
+    new_text_row = create_attribute_text_row(new_name, new_value, value_count, row_idx)
+    sidebar_children[row_sidebar_idx] = new_text_row
+
+    del previous_attr_elements[str_row_idx]
+    selected_items.set_attrs(common_attrs)
+    return elements, sidebar_children, selected_items.get_data(), previous_attr_elements
 
 
 def add_button_click(
     n_clicks: Optional[int],
     sidebar_children: list,
     elements: GraphElements,
-    dropdown_options: list,
     new_attribute_name: Optional[str],
     attr_val_container_children: Optional[list],
     type_dropdown_value: str,
@@ -343,90 +628,62 @@ def add_button_click(
         or len(attr_val_container_children) == 0
     ):
         return elements, sidebar_children, data
-    REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM = 1
-    NEW_ATTRIBUTE_FIELD_NAME_OFFSET = 4
-    ADD_ATTRIBUTE_BUTTON_OFFSET = 6
+    NEW_ATTRIBUTE_FIELD_NAME_OFFSET = 1
+    ADD_ATTRIBUTE_BUTTON_OFFSET = 3
     new_attribute_value = extract_value_from_children(
         attr_val_container_children, dropdown_value=type_dropdown_value
     )
     selected_items = Selected_items()
     selected_items.set_data(data)
-    elements_idxs = selected_items.get_elements_idxs()
-    for element_idx in elements_idxs:
-        elements[element_idx]["data"][ADD_ATTRS][
-            new_attribute_name
-        ] = new_attribute_value
     common_attrs = selected_items.get_attrs()
     common_attrs.append(new_attribute_name)
     selected_items.set_attrs(common_attrs)
-    dropdown_options.append(new_attribute_name)
-    insert_idx = 0
-    for i in range(len(sidebar_children)):
-        if is_confirm_edit_button(sidebar_children, i):
-            insert_idx = i
-    sidebar_children[insert_idx + REMOVE_DROPDOWN_OFFSET_FROM_CONFIRM]["props"][
-        "options"
-    ] = dropdown_options
-    sidebar_children[insert_idx + NEW_ATTRIBUTE_FIELD_NAME_OFFSET]["props"][
-        "value"
-    ] = ""
-    sidebar_children[insert_idx + ADD_ATTRIBUTE_BUTTON_OFFSET]["props"][
-        "disabled"
-    ] = True
+    elements_idxs = selected_items.get_elements_idxs()
+    for element_idx in elements_idxs:
+        elements[element_idx][DATA][ADD_ATTRS][new_attribute_name] = new_attribute_value
+
+    insert_idx, new_row_idx = get_insert_row_idx(sidebar_children)
+
+    sidebar_children[insert_idx + NEW_ATTRIBUTE_FIELD_NAME_OFFSET][PROPS][VALUE] = ""
+    sidebar_children[insert_idx + ADD_ATTRIBUTE_BUTTON_OFFSET][PROPS][DIS] = True
     sidebar_children.insert(
         insert_idx,
-        create_attribute_value_input_field(new_attribute_value, new_attribute_name),
-    )
-    sidebar_children.insert(
-        insert_idx, create_attribute_name_input_field(new_attribute_name)
+        create_attribute_text_row(new_attribute_name, new_attribute_value, 1, new_row_idx),
     )
     return elements, sidebar_children, selected_items.get_data()
 
 
 def remove_button_click(
-    n_clicks: Optional[int],
+    n_clicks: list,
     sidebar_children: list,
     elements: GraphElements,
-    remove_options: list,
-    remove_value: Optional[str],
-    data: list
-) -> tuple[GraphElements, list, list]:
-    if n_clicks is None or n_clicks < 1 or remove_value is None or remove_value == "":
-        return elements, sidebar_children, data
+    row_button_ids: list,
+    row_values: list,
+    data: list,
+    previous_attr_values: dict
+) -> tuple[GraphElements, list, list, dict]:
+    triggered = ctx.triggered_id
+    trigger_n_clicks = ctx.triggered
+    if not is_real_click(triggered, trigger_n_clicks):
+        return elements, sidebar_children, data, previous_attr_values
+
+    row_idx = triggered["index"]  # type: ignore
     selected_items = Selected_items()
     selected_items.set_data(data)
     elements_idxs = selected_items.get_elements_idxs()
+    row_list_idx = get_row_list_idx(row_idx, row_button_ids)
+    if row_list_idx is None:
+        raise IdxError()
+    remove_value = row_values[row_list_idx]
     for element_idx in elements_idxs:
         elements[element_idx]["data"][ADD_ATTRS].pop(remove_value)
     common_attrs = selected_items.get_attrs()
-    remove_options.remove(remove_value)
-    FIRST_ATTR_INPUT_IDX = get_attribute_input_field_start(sidebar_children)
-    CONFIRM_IDX = 0
-    for i in range(len(sidebar_children)):
-        if is_confirm_edit_button(sidebar_children, i):
-            CONFIRM_IDX = i
-            break
-    REMOVE_DROPDOWN_OFFSET = 1
-    REMOVE_DROPDOWN_IDX = CONFIRM_IDX + REMOVE_DROPDOWN_OFFSET
-    REMOVE_BUTTON_OFFSET = 2
-    REMOVED_ATTRIBUTE_VALUE_OFFSET_FROM_NAME = 1
-    sidebar_children[REMOVE_DROPDOWN_IDX]["props"]["options"] = remove_options
-    sidebar_children[REMOVE_DROPDOWN_IDX]["props"]["value"] = ""
-    sidebar_children[CONFIRM_IDX + REMOVE_BUTTON_OFFSET]["props"]["disabled"] = True
-    ATTRIBUTE_NAME_TO_BE_DELETED_IDX = 0
-    for i in range(len(common_attrs)):
-        if common_attrs[i] == remove_value:
-            ATTRIBUTE_NAME_TO_BE_DELETED_IDX = i
-            break
-    sidebar_children.pop(
-        FIRST_ATTR_INPUT_IDX
-        + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX
-        + REMOVED_ATTRIBUTE_VALUE_OFFSET_FROM_NAME
-    )
-    sidebar_children.pop(FIRST_ATTR_INPUT_IDX + 2 * ATTRIBUTE_NAME_TO_BE_DELETED_IDX)
     common_attrs.remove(remove_value)
     selected_items.set_attrs(common_attrs)
-    return elements, sidebar_children, selected_items.get_data()
+
+    update_attribute_rows_indices(sidebar_children, row_idx + 1, -1, previous_attr_values)
+    sidebar_children.pop(row_idx)
+    return elements, sidebar_children, selected_items.get_data(), previous_attr_values
 
 
 # APP CALLBACKS
@@ -439,7 +696,7 @@ def remove_button_click(
         State("graph-cytoscape", "elements"),
     ],
 )
-def create_attribute_input_fields(
+def create_attribute_editor_sidebar(
     selected_nodes: GraphElements,
     selected_edges: GraphElements,
     elements: GraphElements,
@@ -465,53 +722,22 @@ def create_attribute_input_fields(
     selected_items.set_edges(selected_edges)
     selected_items.generate_selected_elements_idxs(elements)
     if len(selected_nodes) == 1 and len(selected_edges) == 0:
-        sidebar_children.append(html.H5("Label", id="node_label_field_heading"))
-        sidebar_children.append(
-            dbc.Input(
-                value=selected_nodes[0]["label"],
-                type="text",
-                id="node_label_field",
-                class_name="w-100 d-inline-block mt-1 mb-4",
-            )
-        )
+        sidebar_children.append(create_label_row(selected_nodes[0]["label"], LABEL_ROW_TEXT))
     sidebar_children.append(
         html.H5("Attributes", id="elements_prop_fields_heading")
     )
+    index = len(sidebar_children)
     for attr in common_attr:
         number_of_values = count_unique_values(additional_attrs, attr)
-        sidebar_children += create_attribute_input_field(
-            additional_attrs, number_of_values, attr
-        )
-    sidebar_children.append(
-        dbc.Button(
-            "Confirm Edit",
-            id="confirm-edit-button",
-            class_name="w-100 mt-2 mb-2",
-            color="info",
-        )
-    )
-    sidebar_children.append(
-        dcc.Dropdown(
-            common_attr,
-            placeholder="Select Attribute to Remove",
-            id="remove-attribute-dropdown",
-            className="w-100 mt-2 mb-1",
-        )
-    )
-    sidebar_children.append(
-        dbc.Button(
-            "Remove Attribute",
-            id="remove-attribute-button",
-            disabled=True,
-            class_name="w-100 mt-1 mb-2",
-            color="danger",
-        )
-    )
+        sidebar_children.append(create_attribute_text_row(
+            attr, additional_attrs[0][attr], number_of_values, index
+        ))
+        index += 1
     sidebar_children.append(
         dcc.Dropdown(
             ["Number", "Boolean", "Text", "Dictionary"],
             placeholder="Select Attribute Value Type",
-            id="attribute-type-dropdown",
+            id=ID_AFTER_ATTRIBUTE_ROWS,
             className="mt-2 mb-1",
         )
     )
@@ -535,13 +761,129 @@ def create_attribute_input_fields(
             color="success",
         )
     )
-
     sidebar = html.Div(
         id="sidebar_div",
         children=sidebar_children,
         style=ATTRIBUTE_SIDEBAR_STYLE,
     )
     return [sidebar, selected_items.get_data()]
+
+
+@app.callback(
+    [
+        Output("sidebar_div", "children"),
+        Output("previous-attr-elements", "data")
+    ],
+    [
+        Input({"type": "attr_edit_pencil", "index": ALL}, "n_clicks"),
+        State("sidebar_div", "children"),
+        State("previous-attr-elements", "data"),
+        State("selected-items", "data"),
+        State("graph-cytoscape", "elements")
+    ],
+    prevent_initial_call=True
+)
+def create_attribute_input_row(
+    n_clicks: list,
+    sidebar_children: list,
+    prev_attr_elements: dict,
+    data: list,
+    elements: GraphElements
+) -> tuple[list, dict]:
+    triggered = ctx.triggered_id
+    triggered_n_clicks = ctx.triggered
+    input_row_items = []
+    if not is_real_click(triggered, triggered_n_clicks):
+        return sidebar_children, prev_attr_elements
+    row_idx = triggered["index"]  # type: ignore
+    selected_items = Selected_items()
+    selected_items.set_data(data)
+    element_idxs = selected_items.get_elements_idxs()
+    old_row_items = sidebar_children[row_idx][PROPS][CHILDREN]
+    input_row_items.append(old_row_items[TYPE_SYMBOL_IDX])
+
+    name_input = copy.deepcopy(NAME_TYPE_TEMPLATE)
+    name_input.id["index"] = row_idx  # type: ignore
+    name_element = old_row_items[ATTR_NAME_IDX]
+    name = name_element[PROPS][CHILDREN]
+    name_input.value = name  # type: ignore
+    input_row_items.append(name_input)
+
+    attr_value_text_element = old_row_items[ATTR_VALUE_IDX]
+    type_symbol = old_row_items[TYPE_SYMBOL_IDX][PROPS][CHILDREN]
+    if attr_value_text_element[PROPS][ID][TYPE] == ATTR_VALUE_COUNT_TYPE:
+        input_row_items.append(attr_value_text_element)
+    else:
+        attr_value_input = copy.deepcopy(VALUE_TYPE_TEMPLATES[type_symbol])
+        attr_value_input.id["index"] = row_idx
+        attr_value = old_row_items[ATTR_VALUE_IDX][PROPS][CHILDREN]
+        if type_symbol == BOOL_SYMBOL:
+            attr_value = ast.literal_eval(attr_value)
+            attr_value_input.on = attr_value
+        else:
+            attr_value_input.value = attr_value
+        input_row_items.append(attr_value_input)
+
+    edit_buttons = copy.deepcopy(EDIT_BUTTONS_TEMPLATE)
+    add_buttons_index(edit_buttons, row_idx)
+    input_row_items.append(edit_buttons)
+
+    attr_input_row = html.Div(
+        children=input_row_items,
+        id="attr_row_index" + str(row_idx),
+        style=ROW | ATTR_ROW_COLORS[type_symbol] | ROW_ROW
+    )
+    sidebar_children[row_idx] = attr_input_row
+    prev_attr_elements[str(row_idx)] = {NAME_ELEMENT: name_element,
+                                        VALUE_ELEMENT: attr_value_text_element,
+                                        VALUE: elements[element_idxs[0]][DATA][ADD_ATTRS][name]}
+    return sidebar_children, prev_attr_elements
+
+
+@app.callback(
+    [
+        Output("sidebar_div", "children"),
+        Output("previous-attr-elements", "data")
+    ],
+    [
+        Input({"type": "attr_edit_cancel", "index": ALL}, "n_clicks"),
+        State("sidebar_div", "children"),
+        State("previous-attr-elements", "data")
+    ],
+    prevent_initial_call=True
+)
+def cancel_attr_edit(
+    n_clicks: Optional[int],
+    sidebar_children: list,
+    previous_attr_elements: dict
+) -> tuple[list, dict]:
+    triggered = ctx.triggered_id
+    triggered_n_clicks = ctx.triggered
+    if not is_real_click(triggered, triggered_n_clicks):
+        return sidebar_children, previous_attr_elements
+    row_idx = triggered["index"]  # type: ignore
+    str_row_idx = str(row_idx)
+    text_row_items = []
+    old_row_items = sidebar_children[row_idx][PROPS][CHILDREN]
+    text_row_items.append(old_row_items[TYPE_SYMBOL_IDX])
+    type_symbol = old_row_items[TYPE_SYMBOL_IDX][PROPS][CHILDREN]
+
+    text_row_items.append(previous_attr_elements[str_row_idx][NAME_ELEMENT])
+
+    text_row_items.append(previous_attr_elements[str_row_idx][VALUE_ELEMENT])
+
+    text_buttons = copy.deepcopy(TEXT_BUTTONS_TEMPLATE)
+    add_buttons_index(text_buttons, row_idx)
+    text_row_items.append(text_buttons)
+
+    attr_text_row = html.Div(
+        children=text_row_items,
+        id="attr_row_index" + str(row_idx),
+        style=ROW | ATTR_ROW_COLORS[type_symbol] | ROW_ROW
+    )
+    sidebar_children[row_idx] = attr_text_row
+    del previous_attr_elements[str_row_idx]
+    return sidebar_children, previous_attr_elements
 
 
 @app.callback(
@@ -571,7 +913,7 @@ def set_attribute_value_input_type(
     ):
         return container_children, disabled
     if dropdown_value == "Boolean":
-        input_field = daq.BooleanSwitch(
+        input_field = daq.BooleanSwitch(  # type: ignore
             id="add-attribute-value", on=False, label="Attribute Value"
         )
     elif dropdown_value == "Number":
@@ -586,8 +928,86 @@ def set_attribute_value_input_type(
 
 
 @app.callback(
-    Output("remove-attribute-button", "disabled"),
-    Input("remove-attribute-dropdown", "value"),
+    [
+        Output("sidebar_div", "children"),
+        Output("previous-attr-elements", "data")
+    ],
+    [
+        Input("label_edit_pencil", "n_clicks"),
+        State("sidebar_div", "children"),
+        State("previous-attr-elements", "data"),
+        State("label_text_value", "children")
+    ],
+    prevent_initial_call=True
 )
-def remove_button_disabler(dropdown_value: Optional[str]) -> bool:
-    return dropdown_value is None or dropdown_value == ""
+def create_label_input_row(
+    n_clicks: Optional[int],
+    sidebar_children: list,
+    prev_attr_elements: dict,
+    label: str
+) -> tuple[list, dict]:
+    if n_clicks is None \
+       or n_clicks < 1:
+        return sidebar_children, prev_attr_elements
+
+    label_input_row = copy.deepcopy(LABEL_ROW_EDIT)
+    label_input_row.children[ATTR_VALUE_IDX].value = label  # type: ignore
+    sidebar_children[LABEL_ROW_SIDEBAR_IDX] = label_input_row
+    prev_attr_elements[LABEL] = label
+    return sidebar_children, prev_attr_elements
+
+
+@app.callback(
+    [
+        Output("sidebar_div", "children"),
+        Output("previous-attr-elements", "data")
+    ],
+    [
+        Input("label_edit_cancel", "n_clicks"),
+        State("sidebar_div", "children"),
+        State("previous-attr-elements", "data")
+    ],
+    prevent_initial_call=True
+)
+def cancel_label_edit(
+    n_clicks: Optional[int],
+    sidebar_children: list,
+    prev_attr_elements: dict
+) -> tuple[list, dict]:
+    if n_clicks is None \
+       or n_clicks < 1:
+        return sidebar_children, prev_attr_elements
+    old_label = prev_attr_elements[LABEL]
+
+    label_text_row = create_label_row(old_label, LABEL_ROW_TEXT)
+
+    sidebar_children[LABEL_ROW_SIDEBAR_IDX] = label_text_row
+    del prev_attr_elements[LABEL]
+    return sidebar_children, prev_attr_elements
+
+
+def confirm_label_button_click(
+    n_clicks: Optional[int],
+    sidebar_children: list[InputComponent],
+    elements: GraphElements,
+    data: list,
+    previous_attr_elements: dict,
+    new_label: str
+) -> tuple[GraphElements, Optional[list], dict]:
+    if n_clicks is None \
+       or n_clicks < 1:
+        return elements, sidebar_children, previous_attr_elements
+
+    selected_items = Selected_items()
+    selected_items.set_data(data)
+    element_idxs = selected_items.get_elements_idxs()
+    first_element_idx = element_idxs[0]
+
+    elements[first_element_idx][DATA][LABEL] = new_label
+
+    new_text_row = create_label_row(new_label, LABEL_ROW_TEXT)
+
+    sidebar_children[LABEL_ROW_SIDEBAR_IDX] = new_text_row
+
+    del previous_attr_elements[LABEL]
+    return elements, sidebar_children, previous_attr_elements
