@@ -55,19 +55,19 @@ ATTRIBUTE_COLUMN_STYLE = {
 }
 
 STRING_ROW_COLOR = {
-    "background": "#c5e1a5"
+    "background": "#DCEDC8"
 }
 
 NUMBER_ROW_COLOR = {
-    "background": "#81d4fa"
+    "background": "#B3E5FC"
 }
 
 DICT_ROW_COLOR = {
-    "background": "#fff59d"
+    "background": "#FFF9C4"
 }
 
 BOOL_ROW_COLOR = {
-    "background": "#ff8080"
+    "background": "#FFCDD2"
 }
 
 ROW = {

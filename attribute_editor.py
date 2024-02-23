@@ -55,7 +55,12 @@ NUM_SYMBOL = "#"
 # Template for label rows
 LABEL_ROW_TEXT = html.Div(
     children=[
-        html.Span(children=TEXT_SYMBOL, style=ROW_VAL),
+        html.Span(children=html.Img(
+                    src="assets/text.svg",
+                    alt=TEXT_SYMBOL,
+                    style=BUTTON_IMG
+                ),
+                style=ROW_VAL),
         html.Span(children="Label", style=ROW_INPUT),
         html.Span(children="", id="label_text_value", style=ROW_INPUT | ROW_INPUT_INPUT),
         html.Div(
@@ -74,24 +79,37 @@ LABEL_ROW_TEXT = html.Div(
 )
 LABEL_ROW_EDIT = html.Div(
     children=[
-        html.Span(children=TEXT_SYMBOL),
-        html.Span(children="Label"),
-        dbc.Input(value="", id="label_edit_value", type="text", placeholder="Label"),
-        html.Span([
+        html.Span(children=html.Img(
+                    src="assets/text.svg",
+                    alt=TEXT_SYMBOL,
+                    style=BUTTON_IMG
+                ),
+                style=ROW_VAL),
+        html.Span(children="Label", style=ROW_INPUT),
+        dbc.Input(value="",
+                  id="label_edit_value",
+                  type="text", placeholder="Label",
+                  style=ROW_INPUT | ROW_INPUT_INPUT),
+        html.Span(children=[
             html.Button(
                 id="label_edit_cancel",
                 children=html.Img(
                     src="assets/close.svg",
-                    alt="Cross image not found"
-                )
+                    alt="Cross image not found",
+                    style=BUTTON_IMG
+                ),
+                style=BUTTON
             ),
             html.Button(
                 id="label_edit_confirm",
                 children=html.Img(
                     src="assets/check.svg",
-                    alt="Tick image not found"
-                )
-            )]
+                    alt="Tick image not found",
+                    style=BUTTON_IMG
+                ),
+                style=BUTTON
+            )],
+            style=BUTTONS
         )
     ],
     style=ROW | STRING_ROW_COLOR | ROW_ROW
@@ -107,10 +125,26 @@ NAME_TYPE_TEMPLATE = dbc.Input(
 
 
 VALUE_TYPE_TEMPLATES = {
-    "bool": ["red", BOOL_SYMBOL],
-    "text": ["green", TEXT_SYMBOL],
-    "dict": ["yellow", DICT_SYMBOL],
-    "number": ["blue", NUM_SYMBOL],
+    "bool": [BOOL_SYMBOL, html.Img(
+                    src="assets/bool.svg",
+                    alt=BOOL_SYMBOL,
+                    style=BUTTON_IMG
+                )],
+    "text": [TEXT_SYMBOL, html.Img(
+                    src="assets/text.svg",
+                    alt=TEXT_SYMBOL,
+                    style=BUTTON_IMG
+                )],
+    "dict": [DICT_SYMBOL, html.Img(
+                    src="assets/dict.svg",
+                    alt=DICT_SYMBOL,
+                    style=BUTTON_IMG
+                )],
+    "number": [NUM_SYMBOL, html.Img(
+                    src="assets/numeric.svg",
+                    alt=NUM_SYMBOL,
+                    style=BUTTON_IMG
+                )],
     BOOL_SYMBOL: daq.BooleanSwitch(  # type: ignore
             id={
                 "type": "attr_value_input",
@@ -200,8 +234,8 @@ EDIT_BUTTONS_TEMPLATE = html.Div(
 )
 
 
-ROW_COLOR_IDX = 0
-ROW_SYMBOL_IDX = 1
+ROW_SYMBOL_IDX = 0
+ROW_TYPE_IMG_IDX = 1
 TYPE_SYMBOL_IDX = 0
 ATTR_NAME_IDX = 1
 ATTR_VALUE_IDX = 2
@@ -222,6 +256,7 @@ ATTR_VALUE_COUNT_TYPE = "attr_value_count"
 DATA = "data"
 DIS = "disabled"
 LABEL = "label"
+ALT = "alt"
 
 
 class ConstError(ValueError):
@@ -413,8 +448,9 @@ def create_attribute_text_row(
     attr_row_items = []
     value_type = determine_value_type(attr_value)
     type_symbol = VALUE_TYPE_TEMPLATES[value_type][ROW_SYMBOL_IDX]
+    type_img = VALUE_TYPE_TEMPLATES[value_type][ROW_TYPE_IMG_IDX]
     attr_row_items.append(html.Span(
-        children=type_symbol,
+        children=type_img,
         id={
             "type": "attr_type_symbol",
             "index": index
@@ -481,7 +517,7 @@ def update_elements_attributes_name(
 def update_elements_attributes_value(
     element_idxs: list,
     elements: GraphElements,
-    new_value: str,
+    new_value: InputValue,
     name: str
 ) -> None:
     for element_idx in element_idxs:
@@ -590,14 +626,17 @@ def confirm_button_click(
     new_name = row_children[ATTR_NAME_IDX][PROPS][VALUE]
     attr_value_props = row_children[ATTR_VALUE_IDX][PROPS]
     new_value = elements[first_element_idx][DATA][ADD_ATTRS][old_name]
+    type_symbol = row_children[TYPE_SYMBOL_IDX][PROPS][CHILDREN][PROPS][ALT]
     update_elements_attributes_name(element_idxs, elements, new_name, old_name, common_attrs)
     if attr_value_props[ID][TYPE] == ATTR_VALUE_COUNT_TYPE:
         value_count = int(attr_value_props[CHILDREN][3:])
     else:
-        if row_children[TYPE_SYMBOL_IDX][PROPS][CHILDREN] == BOOL_SYMBOL:
+        if type_symbol == BOOL_SYMBOL:
             new_value = attr_value_props[ON]
-        elif row_children[TYPE_SYMBOL_IDX][PROPS][CHILDREN] == DICT_SYMBOL:
+        elif type_symbol == DICT_SYMBOL:
             new_value = ast.literal_eval(attr_value_props[VALUE])
+        elif type_symbol == NUM_SYMBOL:
+            new_value = int(attr_value_props[VALUE])
         else:
             new_value = attr_value_props[VALUE]
         update_elements_attributes_value(element_idxs, elements, new_value, new_name)
@@ -810,7 +849,7 @@ def create_attribute_input_row(
     input_row_items.append(name_input)
 
     attr_value_text_element = old_row_items[ATTR_VALUE_IDX]
-    type_symbol = old_row_items[TYPE_SYMBOL_IDX][PROPS][CHILDREN]
+    type_symbol = old_row_items[TYPE_SYMBOL_IDX][PROPS][CHILDREN][PROPS][ALT]
     if attr_value_text_element[PROPS][ID][TYPE] == ATTR_VALUE_COUNT_TYPE:
         input_row_items.append(attr_value_text_element)
     else:
@@ -866,7 +905,7 @@ def cancel_attr_edit(
     text_row_items = []
     old_row_items = sidebar_children[row_idx][PROPS][CHILDREN]
     text_row_items.append(old_row_items[TYPE_SYMBOL_IDX])
-    type_symbol = old_row_items[TYPE_SYMBOL_IDX][PROPS][CHILDREN]
+    type_symbol = old_row_items[TYPE_SYMBOL_IDX][PROPS][CHILDREN][PROPS][ALT]
 
     text_row_items.append(previous_attr_elements[str_row_idx][NAME_ELEMENT])
 
