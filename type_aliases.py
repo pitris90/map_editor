@@ -39,6 +39,6 @@ GraphFunction = Callable[..., Graph]
 GraphOrNone = Optional[Graph]
 GraphElements = list[dict[str, Any]]
 GraphElement = dict[str, Any]
-InputComponent = Union[html.Label, dbc.Input, daq.BooleanSwitch]
+InputComponent = Union[html.Label, dbc.Input, daq.BooleanSwitch]  # type: ignore
 InputValue = Union[bool, str, dict, int, float]
 U_R_Actions_Init = list
