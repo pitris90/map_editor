@@ -26,6 +26,11 @@ from attribute_editor import (
     remove_button_click,
     confirm_label_button_click
 )
+from sidebar import (
+    new_graph,
+    update_output,
+    button_click
+)
 
 
 CURRENT_ACTION_ID = 0
@@ -315,6 +320,7 @@ def action_remove_button_click(
         State("graph-cytoscape", "elements"),
         State("selected-items", "data"),
         State("previous-attr-elements", "data"),
+        State("label_edit_value", "value"),
         State("undo-redo-actions", "data")
     ],
     prevent_initial_call=True,
@@ -338,6 +344,105 @@ def action_confirm_label_button_click(
         new_label)
     return confirm_button_click_output + (insert_u_r_action(u_r_actions, before_action,
                                                             confirm_button_click_output[0]),)
+
+
+@app.callback(
+    [
+        Output("graph-cytoscape", "elements"),
+        Output("undo-redo-actions", "data")
+    ],
+    [
+        Input("new-graph-button", "n_clicks"),
+        State("graph-cytoscape", "elements"),
+        State("undo-redo-actions", "data")
+    ],
+)
+def action_new_graph(
+    n: Optional[int],
+    elements: GraphElements,
+    u_r_actions: U_R_Actions_Init
+) -> tuple[GraphElements, U_R_Actions_Init]:
+    before_action = copy.deepcopy(elements)
+    new_graph_output = new_graph(n, elements)
+    return new_graph_output, insert_u_r_action(u_r_actions, before_action, new_graph_output)
+
+
+@app.callback(
+    [
+        Output("graph-cytoscape", "elements"),
+        Output("orientation-graph-switcher", "on"),
+        Output("orientation-graph-switcher", "label"),
+        Output("graph-cytoscape", "stylesheet"),
+        Output("undo-redo-actions", "data")
+    ],
+    [
+        Input("upload-graph", "contents"),
+        State("upload-graph", "filename"),
+        State("graph-cytoscape", "elements"),
+        State("orientation-graph-switcher", "on"),
+        State("orientation-graph-switcher", "label"),
+        State("graph-cytoscape", "stylesheet"),
+        State("undo-redo-actions", "data")
+    ],
+)
+def action_update_output(
+    contents: Optional[str],
+    filename: Optional[str],
+    elements: GraphElements,
+    directed: bool,
+    label: str,
+    stylesheet: list[dict],
+    u_r_actions: U_R_Actions_Init
+) -> tuple[GraphElements, bool, str, list[dict], U_R_Actions_Init]:
+    before_action = copy.deepcopy(elements)
+    uploaded_graph_output = update_output(
+        contents,
+        filename,
+        elements,
+        directed,
+        label,
+        stylesheet
+    )
+    return uploaded_graph_output + (insert_u_r_action(u_r_actions, before_action,
+                                                      uploaded_graph_output[0]),)
+
+
+@app.callback(
+    [
+        Output("graph-cytoscape", "elements"),
+        Output("modal_menu_graph_functions", "is_open"),
+        Output("orientation-graph-switcher", "on"),
+        Output("orientation-graph-switcher", "label"),
+        Output("graph-cytoscape", "stylesheet"),
+        Output("undo-redo-actions", "data")
+    ],
+    [
+        Input("graph_generate_button", "n_clicks"),
+        State("graph_layout_dropdown", "value"),
+        State("input_fields", "children"),
+        State("graph-cytoscape", "stylesheet"),
+        State("graph-cytoscape", "elements"),
+        State("undo-redo-actions", "data")
+    ],
+    prevent_initial_call=True,
+)
+def action_button_click(
+    n_clicks: int,
+    value: str,
+    html_input_children: list[InputComponent],
+    stylesheet: list[dict],
+    elements: GraphElements,
+    u_r_actions: U_R_Actions_Init
+) -> tuple[GraphElements, bool, bool, str, list[dict], U_R_Actions_Init]:
+    before_action = copy.deepcopy(elements)
+    created_graph_output = button_click(
+        n_clicks,
+        value,
+        html_input_children,
+        stylesheet
+    )
+    return created_graph_output + (insert_u_r_action(u_r_actions, before_action,
+                                                     created_graph_output[0]),)
 
 
 @app.callback(

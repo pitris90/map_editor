@@ -50,10 +50,6 @@ def graph_orientation_switcher(
     return "Undirected", stylesheet
 
 
-@app.callback(
-    Output("graph-cytoscape", "elements"),
-    [Input("new-graph-button", "n_clicks"), State("graph-cytoscape", "elements")],
-)
 def new_graph(n: Optional[int], elements: GraphElements) -> GraphElements:
     if n is not None and n > 0:
         id_generator.reset()
@@ -75,22 +71,6 @@ def save(_: Optional[int], elements: GraphElements, directed: bool) -> dict:
     return dcc.send_string(yaml.dump(yaml_dict), "graph.yml")
 
 
-@app.callback(
-    [
-        Output("graph-cytoscape", "elements"),
-        Output("orientation-graph-switcher", "on"),
-        Output("orientation-graph-switcher", "label"),
-        Output("graph-cytoscape", "stylesheet"),
-    ],
-    [
-        Input("upload-graph", "contents"),
-        State("upload-graph", "filename"),
-        State("graph-cytoscape", "elements"),
-        State("orientation-graph-switcher", "on"),
-        State("orientation-graph-switcher", "label"),
-        State("graph-cytoscape", "stylesheet"),
-    ],
-)
 def update_output(
     contents: Optional[str],
     filename: Optional[str],
@@ -157,22 +137,6 @@ def create_input_fields(selected_option: str) -> list[InputComponent]:
     return input_fields
 
 
-@app.callback(
-    [
-        Output("graph-cytoscape", "elements"),
-        Output("modal_menu_graph_functions", "is_open"),
-        Output("orientation-graph-switcher", "on"),
-        Output("orientation-graph-switcher", "label"),
-        Output("graph-cytoscape", "stylesheet"),
-    ],
-    [
-        Input("graph_generate_button", "n_clicks"),
-        State("graph_layout_dropdown", "value"),
-        State("input_fields", "children"),
-        State("graph-cytoscape", "stylesheet"),
-    ],
-    prevent_initial_call=True,
-)
 def button_click(
     n_clicks: int,
     value: str,
