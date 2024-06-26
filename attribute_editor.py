@@ -551,6 +551,15 @@ def update_attribute_row_indices(row_children: list, new_idx: int) -> None:
         row_children[i][PROPS][ID][INDEX] = new_idx
 
 
+def update_attr_row(
+    selected_items: Selected_items,
+    elements: GraphElements,
+    sidebar_child: dict
+) -> None:
+    if sidebar_child[PROPS][CHILDREN][ATTR_NAME_IDX][TYPE] == "Input":
+        return
+
+
 def extract_value_from_children(
     children: Union[list[dict], dict],
     value_input_idx: int = 0,
@@ -923,6 +932,32 @@ def cancel_attr_edit(
     sidebar_children[row_idx] = attr_text_row
     del previous_attr_elements[str_row_idx]
     return sidebar_children, previous_attr_elements
+
+
+@app.callback(
+    [
+        Output("sidebar_div", "children")
+    ],
+    [
+        Input("graph-cytoscape", "elements"),
+        State("sidebar_div", "children"),
+        State("selected-items", "data")
+    ],
+)
+def update_attribute_editor_sidebar(
+    elements: GraphElements,
+    sidebar_children: list[dict],
+    data: list
+) -> list:
+    if len(sidebar_children) == 0:
+        return []
+    selected_items = Selected_items()
+    selected_items.set_data(data)
+    for sidebar_child in sidebar_children:
+        child_id = sidebar_child["props"].get("id")
+        if child_id is not None and "attr_row_index" in child_id:
+            update_attr_row(selected_items, elements, sidebar_child)
+    return sidebar_children
 
 
 @app.callback(
