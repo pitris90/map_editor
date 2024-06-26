@@ -1,5 +1,6 @@
 import base64
-import yaml  # type: ignore
+import json
+# import yaml  # type: ignore
 import inspect
 import re
 import dash_bootstrap_components as dbc  # type: ignore
@@ -17,17 +18,19 @@ from dash_extensions.enrich import (  # type: ignore
 )
 from app import app
 from graph_utils import (
+    convert_cytoscape_to_json,
     edge_target_arrow_shape,
     id_generator,
-    convert_cytoscape_to_yaml_dict,
-    convert_networkx_to_cytoscape
+    # convert_cytoscape_to_yaml_dict,
+    convert_networkx_to_cytoscape,
+    json_to_networkx_graph
 )
 from graph_functions import (
-    handle_yaml_graph,
+    # handle_yaml_graph,
     FUNCTION_DICT,
     create_function_parameter_input_field,
     handle_input_dict,
-    call_graph_function_with_params
+    call_graph_function_with_params,
 )
 
 
@@ -67,8 +70,8 @@ def new_graph(n: Optional[int], elements: GraphElements) -> GraphElements:
     prevent_initial_call=True,
 )
 def save(_: Optional[int], elements: GraphElements, directed: bool) -> dict:
-    yaml_dict = convert_cytoscape_to_yaml_dict(elements, directed)
-    return dcc.send_string(yaml.dump(yaml_dict), "graph.yml")
+    json_dict = convert_cytoscape_to_json(elements, directed)
+    return dcc.send_string(json.dumps(json_dict, indent=4), "graph.json")
 
 
 def update_output(
@@ -84,8 +87,9 @@ def update_output(
         # read the uploaded file and convert it to a NetworkX graph
     content_type, content_string = contents.split(",")
     decoded = base64.b64decode(content_string)
-    network_data = yaml.safe_load(decoded)
-    graph = handle_yaml_graph(network_data)
+    # network_data = yaml.safe_load(decoded)
+    # graph = handle_yaml_graph(network_data)
+    graph = json_to_networkx_graph(decoded)
     if graph is None:
         print("Graph after handling yaml was None")
         return [], directed, label, stylesheet

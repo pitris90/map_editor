@@ -4,6 +4,7 @@ from type_aliases import (
     GraphElements,
     GraphElement
 )
+import json
 
 
 class Id_generator:
@@ -186,3 +187,73 @@ def convert_edge_to_yaml_dict(element: GraphElement) -> dict:
     result["nodes"] = [source_id, target_id]
     result.update(edge_attrs)
     return result
+
+
+def json_to_networkx_graph(json_string):
+    data = json.loads(json_string)
+    G = nx.Graph()
+    ROOT_LIST_DATA_INDEX = 0
+    graph_data = data[ROOT_LIST_DATA_INDEX]['graph']
+
+    for node in graph_data['nodes']:
+        label = node[0]
+        attributes = node[1]
+        G.add_node(label, **attributes)
+    for edge in graph_data['edges']:
+        node_pair = edge[0]
+        attributes = edge[1]
+        G.add_edge(node_pair[0], node_pair[1], **attributes)
+    return G
+
+
+def convert_edge_to_json(element: GraphElement) -> list:
+    result = []
+    source_id = element["data"]["source"]
+    target_id = element["data"]["target"]
+    edge_attrs = {
+        key: value
+        for key, value in element["data"][ADD_ATTRS].items()
+        if key != "nodes"
+    }
+    result.append([source_id, target_id])
+    result.append(edge_attrs)
+    # PLACEHOLDER: UNKNOWN THIRD ITEM
+    return result
+
+
+def convert_cytoscape_to_json(elements: GraphElements, directed: bool) -> dict:
+    nodes = []
+    edges = []
+    x_offset = 0.0
+    y_offset = 0.0
+    for element in elements:
+        if not is_node(element):
+            continue
+        x_pos = element["position"]["x"]
+        y_pos = element["position"]["y"]
+        if x_pos < x_offset:
+            x_offset = x_pos
+        if y_pos < y_offset:
+            y_offset = y_pos
+
+    x_offset = abs(x_offset)
+    y_offset = abs(y_offset)
+
+    for element in elements:
+        if is_node(element):
+            node = []
+            node_id, node_attrs = create_node_attributes(element, x_offset, y_offset)
+            node.append(str(node_id))
+            node.append(node_attrs)
+            # PLACEHOLDER: UNKNOWN THIRD ITEM
+            nodes.append(node)
+        else:
+            edges.append(convert_edge_to_json(element))
+
+    yaml_dict = {
+        "graph": {
+            "nodes": nodes,
+            "edges": edges
+        }
+    }
+    return yaml_dict
