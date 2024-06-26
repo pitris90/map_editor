@@ -68,9 +68,9 @@ def handle_yaml_graph(networkx_data: dict) -> GraphOrNone:
     if networkx_data is None:
         print("Bad yaml file")
         return None
-    if networkx_data.get("loader") == "hardcodedxx":
-        # different handling
-        return networkx_data
+    # if networkx_data.get("loader") == "hardcodedxx":
+    #     # different handling
+    #     return networkx_data
     loader_function = FUNCTION_DICT[networkx_data["loader"]]
     print(inspect.signature(loader_function).parameters)
     print(networkx_data["loader_params"])
