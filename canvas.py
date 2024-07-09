@@ -3,17 +3,15 @@ from type_aliases import (
     GraphElements,
     GraphElement,
 )
-from graph_utils import (
-    is_node,
-    ADD_ATTRS,
-    id_generator,
-    is_removable_edge
-)
+from graph_utils import is_node, ADD_ATTRS, id_generator, is_removable_edge
 from attribute_editor import Selected_items
 
 
 def can_add_new_edge(
-    source: GraphElement, target: GraphElement, elements: GraphElements, directed: bool
+    source: GraphElement,
+    target: GraphElement,
+    elements: GraphElements,
+    directed: bool,
 ) -> bool:
     target_id = target["id"]
     source_id = source["id"]
@@ -22,7 +20,9 @@ def can_add_new_edge(
             continue
         element_source_id = element["data"]["source"]
         element_target_id = element["data"]["target"]
-        same_edge = element_source_id == source_id and element_target_id == target_id
+        same_edge = (
+            element_source_id == source_id and element_target_id == target_id
+        )
         if (
             directed
             and same_edge
@@ -50,7 +50,11 @@ def rebind_new_edge(
     ):
         return elements
     new_edge = {
-        "data": {"source": source["id"], "target": target["id"], ADD_ATTRS: dict()}
+        "data": {
+            "source": source["id"],
+            "target": target["id"],
+            ADD_ATTRS: dict(),
+        }
     }
     elements.append(new_edge)
     return elements
@@ -61,7 +65,7 @@ def update_positions(
     moved_node_data: dict,
     elements: GraphElements,
     selected_node_data: Optional[list],
-    data: list
+    data: list,
 ) -> GraphElements:
     selected_items = Selected_items()
     if data is not None and len(data) != 0:
@@ -75,7 +79,12 @@ def update_positions(
             element["position"] = new_node_position
             element_edited = True
             break
-    if selected_node_data is None or len(selected_node_data) == 0 or not element_edited:
+    if (
+        selected_node_data is None
+        or len(selected_node_data) == 0
+        or not element_edited
+        or not is_moved_node_selected(moved_node_data, selected_node_data)
+    ):
         return elements
     for idx in selected_items.get_elements_idxs():
         if (
@@ -87,6 +96,16 @@ def update_positions(
             elements[idx]["position"]["x"] += x_diff
             elements[idx]["position"]["y"] += y_diff
     return elements
+
+
+def is_moved_node_selected(
+    moved_node_data: dict, selected_node_data: list
+) -> bool:
+    moved_node_id = moved_node_data["id"]
+    for selected_node in selected_node_data:
+        if selected_node["id"] == moved_node_id:
+            return True
+    return False
 
 
 def add_node(pos: Optional[dict], elements: GraphElements) -> GraphElements:
@@ -101,7 +120,9 @@ def add_node(pos: Optional[dict], elements: GraphElements) -> GraphElements:
     return elements
 
 
-def delete_node(node: Optional[GraphElement], elements: GraphElements) -> GraphElements:
+def delete_node(
+    node: Optional[GraphElement], elements: GraphElements
+) -> GraphElements:
     if node is None:
         return elements
     node_id = node["data"]["id"]
@@ -117,7 +138,9 @@ def delete_node(node: Optional[GraphElement], elements: GraphElements) -> GraphE
     return elements
 
 
-def delete_edge(edge: Optional[GraphElement], elements: GraphElements) -> GraphElements:
+def delete_edge(
+    edge: Optional[GraphElement], elements: GraphElements
+) -> GraphElements:
     if edge is None:
         return elements
     source_id = edge["sourceData"]["id"]
