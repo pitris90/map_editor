@@ -86,10 +86,11 @@ APP_LAYOUT = html.Div(
                 },
             ],
             layout={"name": "preset"},
-            autoRefreshLayout=True,
+            autoRefreshLayout=False,
             boxSelectionEnabled=True,
             minZoom=0.5,
-            maxZoom=5
+            maxZoom=5,
+            userPanningEnabled=False
         ),
         # html.Button("Debug Button", id="main-debug-button"),
         # html.Div(id="output-data-upload"),
